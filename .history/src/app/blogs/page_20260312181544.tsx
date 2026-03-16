@@ -1,0 +1,136 @@
+"use client";
+
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { allBlogPostsSorted } from "@/lib/data/blog-posts-complete";
+import { getBlogImageUrl } from "@/utils/blog-images";
+import { Calendar, User, Clock } from "lucide-react";
+import Image from "next/image";
+
+export default function BlogPage() {
+  const categories = Array.from(
+    new Set(allBlogPostsSorted.map(post => post.category))
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-green-50 to-emerald-50 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="mb-4">Beauty & Skincare Blog</h1>
+          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+            Learn about organic skincare, natural ingredients, and beauty tips from our experts.
+          </p>
+        </div>
+      </section>
+
+      {/* Blog Posts */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Category Info */}
+          <div className="mb-12">
+            <p className="text-gray-600">
+              {allBlogPostsSorted.length} articles across {categories.length} categories
+            </p>
+          </div>
+
+          {/* Blog Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {allBlogPostsSorted.map(post => (
+              <Card key={post.id} className="h-full hover:shadow-lg transition-shadow overflow-hidden">
+                {/* Featured Image */}
+                <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
+                  <Image
+                    src={getBlogImageUrl(post.slug)}
+                    alt={post.title}
+                    width={400}
+                    height={300}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <CardContent className="p-6 flex flex-col h-full">
+                  {/* Category Badge */}
+                  <div className="mb-3">
+                    <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">
+                      {post.category}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <Link href={`/blogs/${post.slug}`}>
+                    <h3 className="mb-3 line-clamp-2 hover:text-green-600 transition-colors cursor-pointer">
+                      {post.title}
+                    </h3>
+                  </Link>
+
+                  {/* Excerpt */}
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {post.excerpt}
+                  </p>
+
+                  {/* Meta Information */}
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-4">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      {post.publishDate}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      {post.author}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      {post.readTime}
+                    </div>
+                  </div>
+
+                  {/* Read More Link */}
+                  <div className="pt-4 border-t mt-auto">
+                    <Link href={`/blogs/${post.slug}`}>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-green-600 hover:text-green-700"
+                      >
+                        Read Article →
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {allBlogPostsSorted.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-600 mb-4">No blog posts found.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-green-600 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="mb-4">Subscribe for More Beauty Tips</h2>
+          <p className="mb-8 text-green-50">
+            Get the latest skincare and beauty articles delivered to your inbox.
+          </p>
+          <div className="flex gap-3 max-w-md mx-auto">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              className="flex-1 px-4 py-2 rounded text-gray-900"
+            />
+            <Button
+              className="bg-white text-green-600 hover:bg-green-50"
+            >
+              Subscribe
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

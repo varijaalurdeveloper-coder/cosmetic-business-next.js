@@ -1,0 +1,56 @@
+import type { MetadataRoute } from "next";
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: [
+          "/",
+          "/about",
+          "/products",
+          "/contact",
+          "/cart",
+          "/products?category=*",
+        ],
+        disallow: [
+          "/admin",
+          "/login",
+          "/orders",
+          "/checkout",
+          "/order-success",
+          "/*?search=*",
+        ],
+        crawlDelay: 1,
+      },
+      {
+        userAgent: "Googlebot",
+        allow: "/",
+        disallow: ["/admin", "/login", "/orders", "/checkout"],
+      },
+      {
+        userAgent: "Googlebot-Image",
+        allow: "/",
+      },
+      {
+        userAgent: "Bingbot",
+        allow: "/",
+        disallow: ["/admin", "/login"],
+        crawlDelay: 1,
+      },
+      {
+        userAgent: "Yandex",
+        allow: "/",
+        disallow: ["/admin", "/login"],
+        crawlDelay: 2,
+      },
+      {
+        userAgent: "Baiduspider",
+        allow: "/",
+        disallow: ["/admin", "/login"],
+        crawlDelay: 2,
+      },
+    ],
+    sitemap: "https://rimacosmetics.vercel.app/sitemap.xml",
+  };
+}

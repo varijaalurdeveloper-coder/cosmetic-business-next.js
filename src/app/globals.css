@@ -1,0 +1,84 @@
+/* Required for Tailwind */
+/* Tailwind Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================
+   CSS Variables (Light Mode)
+========================= */
+
+:root {
+  --font-size: 16px;
+  --radius: 0.625rem;
+
+  --background: #ffffff;
+  --foreground: #111827;
+
+  --primary: #030213;
+  --secondary: #f3f4f6;
+  --muted: #ececf0;
+  --accent: #e9ebef;
+
+  --border: #e5e7eb;
+}
+
+/* =========================
+   Dark Mode Variables
+========================= */
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f9fafb;
+
+  --primary: #f9fafb;
+  --secondary: #1e293b;
+  --muted: #1e293b;
+
+  --border: #334155;
+}
+
+/* =========================
+   Base Styles
+========================= */
+
+@layer base {
+
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+}
+
+/* =========================
+   Typography
+========================= */
+
+@layer base {
+
+  h1 {
+    @apply text-2xl font-medium leading-6;
+  }
+
+  h2 {
+    @apply text-xl font-medium leading-6;
+  }
+
+  h3 {
+    @apply text-lg font-medium leading-6;
+  }
+
+  p {
+    @apply text-base leading-6;
+  }
+
+}

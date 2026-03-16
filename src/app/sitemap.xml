@@ -1,0 +1,78 @@
+import type { MetadataRoute } from "next";
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const baseUrl = "https://rimacosmetics.vercel.app";
+
+  return [
+    {
+      url: `${baseUrl}/`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "daily",
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/products`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/cart`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/login`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "yearly",
+      priority: 0.5,
+    },
+
+    // Product Categories
+    {
+      url: `${baseUrl}/products?category=hair-care`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/products?category=skin-care`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/products?category=soap`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/products?category=lip-care`,
+      lastModified: new Date("2025-11-05"),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+
+    // Blog
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: new Date("2026-01-28"),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+  ];
+}
