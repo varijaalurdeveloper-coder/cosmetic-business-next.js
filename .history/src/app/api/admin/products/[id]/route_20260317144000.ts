@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  return NextResponse.json({
-    message: "Products API working",
-  })
+  return NextResponse.json({ message: "OK" })
 }
