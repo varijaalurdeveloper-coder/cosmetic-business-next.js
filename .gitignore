@@ -68,3 +68,5 @@ coverage/
 # Optional: Netlify
 # ================================
 .netlify/
+# VS Code history
+**/.history/
