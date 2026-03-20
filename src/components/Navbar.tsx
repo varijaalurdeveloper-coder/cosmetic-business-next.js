@@ -23,48 +23,54 @@ export function Navbar() {
   const { totalItems } = useCart();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/") return pathname === "/";
+    return pathname === path || pathname.startsWith(`${path}/`);
+  };
 
   const handleLinkClick = () => {
     setIsOpen(false);
   };
 
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About Us" },
+    { href: "/products", label: "Products" },
+    { href: "/contact", label: "Contact" },
+    { href: "/blogs", label: "Blog" },
+  ];
+
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center space-x-3">
-            <img 
-              src="/assets/RimaCosmeticsLogo.svg" 
-              alt="Rima Cosmetics Logo" 
-              className="w-10 h-10"
+    <nav className="sticky top-0 z-40 border-b bg-white shadow-sm">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-3">
+          <Link href="/" className="flex min-w-0 items-center space-x-2">
+            <img
+              src="/assets/RimaCosmeticsLogo.svg"
+              alt="Rima Cosmetics Logo"
+              className="h-10 w-10 shrink-0"
             />
-            <div className="flex flex-col">
-              <span className="font-semibold text-gray-900">
+            <div className="min-w-0 flex flex-col">
+              <span className="truncate text-sm font-semibold text-gray-900 sm:text-base">
                 Rima Cosmetics
               </span>
-              <span className="text-xs text-green-600">100% Organic</span>
+              <span className="truncate text-[10px] text-green-600 sm:text-xs">
+                100% Organic
+              </span>
             </div>
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-8">
-            {[
-              { href: "/", label: "Home" },
-              { href: "/about", label: "About Us" },
-              { href: "/products", label: "Products" },
-              { href: "/contact", label: "Contact" },
-              { href: "/blogs", label: "Blog" },
-            ].map((link) => (
+          <div className="hidden md:flex items-center space-x-8">
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`${
-                  isActive(link.href) ||
-                  pathname.startsWith(`${link.href}/`)
+                className={`transition-colors ${
+                  isActive(link.href)
                     ? "text-green-600"
                     : "text-gray-700 hover:text-green-600"
-                } transition-colors`}
+                }`}
               >
                 {link.label}
               </Link>
@@ -73,11 +79,11 @@ export function Navbar() {
             {user?.role === "admin" && (
               <Link
                 href="/admin"
-                className={`${
+                className={
                   isActive("/admin")
                     ? "text-green-600"
                     : "text-gray-700 hover:text-green-600"
-                }`}
+                }
               >
                 Admin
               </Link>
@@ -86,11 +92,11 @@ export function Navbar() {
             {user?.role === "customer" && (
               <Link
                 href="/orders"
-                className={`${
+                className={
                   isActive("/orders")
                     ? "text-green-600"
                     : "text-gray-700 hover:text-green-600"
-                }`}
+                }
               >
                 My Orders
               </Link>
@@ -98,11 +104,11 @@ export function Navbar() {
           </div>
 
           {/* Right Section */}
-          <div className="flex items-center space-x-4">
-            <Link href="/cart" className="relative">
-              <ShoppingCart className="h-6 w-6 text-gray-700 hover:text-green-600 transition-colors" />
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <Link href="/cart" className="relative shrink-0">
+              <ShoppingCart className="h-6 w-6 text-gray-700 transition-colors hover:text-green-600" />
               {totalItems > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-green-600">
+                <Badge className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-green-600 p-0 text-[10px]">
                   {totalItems}
                 </Badge>
               )}
@@ -136,41 +142,96 @@ export function Navbar() {
 
             {/* Mobile Menu */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="sm">
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden shrink-0"
+                  aria-label="Open menu"
+                >
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
 
-              <SheetContent side="right" className="w-[280px] sm:w-[350px]">
-                <SheetHeader>
-                  <SheetTitle>Menu</SheetTitle>
-                  <SheetDescription>
+              <SheetContent
+                side="right"
+                className="w-[85vw] max-w-[320px] bg-white p-0"
+              >
+                <SheetHeader className="border-b px-6 py-5 text-left">
+                  <SheetTitle className="text-xl font-semibold text-gray-900">
+                    Menu
+                  </SheetTitle>
+                  <SheetDescription className="text-sm text-gray-500">
                     Navigate through the site
                   </SheetDescription>
                 </SheetHeader>
 
-                <div className="flex flex-col space-y-4 mt-8">
-                  {[
-                    { href: "/", label: "Home" },
-                    { href: "/about", label: "About Us" },
-                    { href: "/products", label: "Products" },
-                    { href: "/contact", label: "Contact" },
-                    { href: "/blogs", label: "Blog" },
-                  ].map((link) => (
+                <div className="flex flex-col px-4 py-4">
+                  {navLinks.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={handleLinkClick}
-                      className={`py-3 px-4 rounded-lg ${
+                      className={`rounded-lg px-4 py-3 text-base transition-colors ${
                         isActive(link.href)
-                          ? "bg-green-50 text-green-600"
+                          ? "bg-green-50 font-medium text-green-600"
                           : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       {link.label}
                     </Link>
                   ))}
+
+                  {user?.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={handleLinkClick}
+                      className={`rounded-lg px-4 py-3 text-base transition-colors ${
+                        isActive("/admin")
+                          ? "bg-green-50 font-medium text-green-600"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Admin
+                    </Link>
+                  )}
+
+                  {user?.role === "customer" && (
+                    <Link
+                      href="/orders"
+                      onClick={handleLinkClick}
+                      className={`rounded-lg px-4 py-3 text-base transition-colors ${
+                        isActive("/orders")
+                          ? "bg-green-50 font-medium text-green-600"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      My Orders
+                    </Link>
+                  )}
+
+                  <div className="mt-4 border-t pt-4">
+                    {user ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          logout();
+                          setIsOpen(false);
+                        }}
+                        className="w-full justify-start px-4"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                      </Button>
+                    ) : (
+                      <Link href="/login" onClick={handleLinkClick}>
+                        <Button variant="ghost" className="w-full justify-start px-4">
+                          <User className="mr-2 h-4 w-4" />
+                          Login
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
