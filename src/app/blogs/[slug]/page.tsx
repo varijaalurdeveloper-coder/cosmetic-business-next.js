@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { allBlogPostsSorted } from "@/lib/data/blog-posts-complete";
 import { getBlogImageUrl } from "@/utils/blog-images";
-import { Search, Calendar, User, Clock, MessageCircle } from "lucide-react";
+import { Search, Calendar, User, Clock } from "lucide-react";
 
 export default function BlogPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,17 +182,6 @@ export default function BlogPage() {
           )}
         </div>
       </section>
-
-      {/* Floating WhatsApp Button */}
-      <a
-        href="https://wa.me/"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat on WhatsApp"
-        className="fixed bottom-6 right-5 z-50 flex h-20 w-20 items-center justify-center rounded-full bg-[#08d64b] text-white shadow-[0_12px_24px_rgba(8,214,75,0.35)] transition-transform duration-200 hover:scale-105"
-      >
-        <MessageCircle className="h-10 w-10" />
-      </a>
     </div>
   );
 }
