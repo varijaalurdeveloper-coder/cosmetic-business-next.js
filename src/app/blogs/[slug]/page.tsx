@@ -1,205 +1,198 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { allBlogPosts } from "@/lib/data/blog-posts-complete";
+import { Card, CardContent } from "@/components/ui/card";
+import { allBlogPostsSorted } from "@/lib/data/blog-posts-complete";
 import { getBlogImageUrl } from "@/utils/blog-images";
-import { Calendar, User, Clock, ArrowLeft } from "lucide-react";
+import { Search, Calendar, User, Clock, MessageCircle } from "lucide-react";
 
-export default function BlogDetailPage() {
-  const params = useParams();
-  const slug = params?.slug as string;
+export default function BlogPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All Posts");
 
-  // Find the matching blog post
-  const post = allBlogPosts.find(p => p.slug === slug);
+  const categories = useMemo(() => {
+    return Array.from(new Set(allBlogPostsSorted.map((post) => post.category)));
+  }, []);
 
-  if (!post) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="mb-4">Post Not Found</h1>
-          <p className="text-gray-600 mb-8">
-            The blog post you're looking for doesn't exist.
-          </p>
-          <Link href="/blogs">
-            <Button className="bg-green-600 hover:bg-green-700">
-              Back to Blog
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const categoryTabs = useMemo(() => {
+    return ["All Posts", ...categories];
+  }, [categories]);
+
+  const filteredPosts = useMemo(() => {
+    return allBlogPostsSorted.filter((post) => {
+      const matchesCategory =
+        activeCategory === "All Posts" || post.category === activeCategory;
+
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        query.length === 0 ||
+        post.title.toLowerCase().includes(query) ||
+        post.excerpt.toLowerCase().includes(query) ||
+        post.category.toLowerCase().includes(query) ||
+        post.author.toLowerCase().includes(query);
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeCategory, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link href="/blogs" className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 mb-6">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Blog
-          </Link>
-
-          {/* Category Badge */}
-          <div className="mb-4">
-            <span className="inline-block bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
-              {post.category}
-            </span>
-          </div>
-
-          {/* Title */}
-          <h1 className="mb-6">{post.title}</h1>
-
-          {/* Meta Information */}
-          <div className="flex flex-wrap gap-6 text-gray-600">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              {post.publishDate}
-            </div>
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              {post.author}
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              {post.readTime}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Hero Image */}
-      <div className="h-96 bg-gray-200 overflow-hidden">
-        <Image
-          src={getBlogImageUrl(post.slug)}
-          alt={post.title}
-          width={1200}
-          height={600}
-          className="w-full h-full object-cover"
-          priority
-        />
-      </div>
-
-      {/* Content */}
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Introduction */}
-        <div className="mb-12">
-          <p className="text-lg text-gray-700 leading-relaxed">
-            {post.content.introduction}
-          </p>
-        </div>
-
-        {/* Sections */}
-        <div className="space-y-12">
-          {post.content.sections.map((section, index) => (
-            <div key={index}>
-              <h2 className="mb-4">{section.heading}</h2>
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                {section.content}
-              </p>
-
-              {/* Subsections */}
-              {section.subsections && section.subsections.length > 0 && (
-                <div className="space-y-8 ml-0 md:ml-6 border-l-2 border-green-200 pl-6">
-                  {section.subsections.map((subsection, subIndex) => (
-                    <div key={subIndex}>
-                      <h3 className="mb-3 text-green-700">{subsection.heading}</h3>
-                      <p className="text-gray-700 leading-relaxed">
-                        {subsection.content}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Author Bio */}
-        <div className="mt-16 p-6 bg-white rounded-lg border border-gray-200">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0">
-              <User className="h-8 w-8 text-green-600" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900">About {post.author}</h4>
-              <p className="text-gray-600 text-sm">
-                Skincare expert and founder of Rima Cosmetics. Dedicated to bringing you
-                natural, organic beauty solutions and skincare education.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Newsletter CTA */}
-        <div className="mt-16 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-8 text-center">
-          <h3 className="mb-4">Want more beauty tips?</h3>
-          <p className="text-gray-600 mb-6">
-            Subscribe to our newsletter for weekly skincare advice and product updates.
-          </p>
-          <div className="flex gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="your@email.com"
-              className="flex-1 px-4 py-2 rounded border border-gray-300"
-            />
-            <Button className="bg-green-600 hover:bg-green-700">
-              Subscribe
-            </Button>
-          </div>
-        </div>
-      </article>
-
-      {/* Related Posts */}
-      <section className="bg-white py-16 border-t">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-8">Related Articles</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {allBlogPosts
-              .filter(
-                p =>
-                  p.category === post.category &&
-                  p.id !== post.id
-              )
-              .slice(0, 2)
-              .map(relatedPost => (
-                <div
-                  key={relatedPost.id}
-                  className="p-6 border rounded-lg hover:shadow-lg transition-shadow"
-                >
-                  <Link href={`/blogs/${relatedPost.slug}`}>
-                    <h3 className="mb-3 line-clamp-2 hover:text-green-600 cursor-pointer">
-                      {relatedPost.title}
-                    </h3>
-                  </Link>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {relatedPost.excerpt}
-                  </p>
-                  <div className="text-sm text-gray-500">
-                    {relatedPost.publishDate}
-                  </div>
-                </div>
-              ))}
-          </div>
-
-          {allBlogPosts.filter(
-            p => p.category === post.category && p.id !== post.id
-          ).length === 0 && (
-            <p className="text-gray-600 text-center py-8">
-              No related articles found.
+    <div className="min-h-screen bg-[#eaf6ef]">
+      {/* Hero Section */}
+      <section className="bg-[#05a126] text-white">
+        <div className="mx-auto flex min-h-[360px] max-w-7xl items-center justify-center px-5 py-14 text-center sm:px-6 lg:px-8">
+          <div className="max-w-4xl">
+            <h1 className="mx-auto max-w-4xl text-4xl font-medium leading-tight tracking-tight sm:text-5xl md:text-6xl">
+              Natural Beauty &amp;
+              <br />
+              Skincare Blog
+            </h1>
+            <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-white/95 sm:text-xl">
+              Expert advice, natural remedies, and organic beauty tips for
+              healthy, glowing skin
             </p>
-          )}
-
-          <div className="mt-8 text-center">
-            <Link href="/blogs">
-              <Button variant="outline">View All Articles</Button>
-            </Link>
           </div>
         </div>
       </section>
+
+      {/* Search + Categories Section */}
+      <section className="-mt-2 px-4 pb-10 pt-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-[28px] bg-white p-5 shadow-[0_8px_24px_rgba(16,24,40,0.08)] sm:p-7">
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="pointer-events-none absolute left-5 top-1/2 h-6 w-6 -translate-y-1/2 text-[#9ca3af]" />
+              <input
+                type="text"
+                placeholder="Search blog posts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-16 w-full rounded-[20px] border-0 bg-[#f3f2f7] pl-14 pr-4 text-lg text-[#1f2937] outline-none ring-0 placeholder:text-[#8b8fa3] focus:outline-none focus:ring-2 focus:ring-green-500/20"
+              />
+            </div>
+
+            {/* Category Grid */}
+            <div className="rounded-[24px] bg-[#edf8f1] px-4 py-5 sm:px-6 sm:py-6">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
+                {categoryTabs.map((category) => {
+                  const isActive = activeCategory === category;
+
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setActiveCategory(category)}
+                      className={`min-h-[54px] rounded-full px-4 text-center text-base font-medium transition-all sm:text-lg ${
+                        isActive
+                          ? "bg-[#08c12d] text-white shadow-sm"
+                          : "bg-transparent text-[#111827] hover:text-green-700"
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Blog Posts */}
+      <section className="px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-6 px-1">
+            <p className="text-sm text-[#4b5563] sm:text-base">
+              {filteredPosts.length} articles
+              {activeCategory !== "All Posts" ? ` in ${activeCategory}` : ""} •{" "}
+              {categories.length} categories
+            </p>
+          </div>
+
+          {filteredPosts.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {filteredPosts.map((post) => (
+                <Card
+                  key={post.id}
+                  className="overflow-hidden rounded-[24px] border-0 bg-white shadow-[0_8px_24px_rgba(16,24,40,0.08)] transition-transform duration-200 hover:-translate-y-1"
+                >
+                  <Link href={`/blogs/${post.slug}`} className="block">
+                    <div className="h-56 overflow-hidden bg-[#e5e7eb]">
+                      <Image
+                        src={getBlogImageUrl(post.slug)}
+                        alt={post.title}
+                        width={400}
+                        height={300}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </Link>
+
+                  <CardContent className="flex h-full flex-col p-6">
+                    <div className="mb-4">
+                      <span className="inline-flex rounded-full bg-green-100 px-4 py-1.5 text-xs font-semibold text-green-800">
+                        {post.category}
+                      </span>
+                    </div>
+
+                    <Link href={`/blogs/${post.slug}`}>
+                      <h3 className="mb-3 line-clamp-2 text-xl font-semibold leading-snug text-[#111827] transition-colors hover:text-green-700">
+                        {post.title}
+                      </h3>
+                    </Link>
+
+                    <p className="mb-5 line-clamp-3 text-sm leading-6 text-[#6b7280]">
+                      {post.excerpt}
+                    </p>
+
+                    <div className="mb-5 space-y-2 text-sm text-[#6b7280]">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{post.publishDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        <span>{post.author}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>{post.readTime}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto border-t border-[#e5e7eb] pt-4">
+                      <Link
+                        href={`/blogs/${post.slug}`}
+                        className="inline-flex items-center text-sm font-semibold text-[#08a526] transition-colors hover:text-green-700"
+                      >
+                        Read Article →
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[24px] bg-white px-6 py-14 text-center shadow-[0_8px_24px_rgba(16,24,40,0.08)]">
+              <p className="text-base text-[#4b5563]">
+                No blog posts found for your search.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Floating WhatsApp Button */}
+      <a
+        href="https://wa.me/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat on WhatsApp"
+        className="fixed bottom-6 right-5 z-50 flex h-20 w-20 items-center justify-center rounded-full bg-[#08d64b] text-white shadow-[0_12px_24px_rgba(8,214,75,0.35)] transition-transform duration-200 hover:scale-105"
+      >
+        <MessageCircle className="h-10 w-10" />
+      </a>
     </div>
   );
 }
