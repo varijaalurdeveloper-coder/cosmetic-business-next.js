@@ -63,7 +63,7 @@ export default function SignupPage() {
 
       if (result.success) {
         toast.success("Account created successfully!");
-        router.push("/");
+        router.push("/login");
       } else {
         toast.error(result.error || "Signup failed. Please try again.");
       }
