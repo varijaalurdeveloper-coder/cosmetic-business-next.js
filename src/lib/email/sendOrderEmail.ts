@@ -9,23 +9,71 @@ export async function sendOrderEmail(order: any) {
       return { success: false };
     }
 
-    const itemsHtml = order.items
-      .map(
-        (item: any) => `
-      <tr>
-        <td>${item.product.name}</td>
-        <td>${item.quantity}</td>
-        <td>₹${item.product.price}</td>
-        <td>₹${item.product.price * item.quantity}</td>
-      </tr>
-    `
-      )
+    const customer = order.customer || {};
+    const fullName = `${customer.firstName || ""} ${customer.lastName || ""}`.trim();
+    const orderId = order.id || `ORD-${Date.now()}`;
+    const orderDate = new Date(order.createdAt || Date.now()).toLocaleString("en-IN");
+
+    const itemsHtml = (order.items || [])
+      .map((item: any) => {
+        const productName = item.product?.name || "Product";
+        const quantity = Number(item.quantity || 0);
+        const price = Number(item.product?.price || 0);
+        const itemTotal = price * quantity;
+
+        return `
+          <div style="margin: 6px 0;">
+            ${productName} x ${quantity} = ₹${itemTotal.toFixed(2)}
+          </div>
+        `;
+      })
       .join("");
 
+    const subtotal =
+      typeof order.totals?.subtotal !== "undefined"
+        ? Number(order.totals.subtotal)
+        : (order.items || []).reduce((sum: number, item: any) => {
+            return sum + Number(item.product?.price || 0) * Number(item.quantity || 0);
+          }, 0);
+
+    const tax = Number(order.totals?.tax || 0);
+    const shipping = Number(order.totals?.shipping || 0);
+    const total =
+      typeof order.totals?.total !== "undefined"
+        ? Number(order.totals.total)
+        : subtotal + tax + shipping;
+
     const emailHtml = `
-      <h2>New Order ${order.id}</h2>
-      <table>${itemsHtml}</table>
-      <h3>Total: ₹${order.total}</h3>
+      <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222; max-width: 600px;">
+        <h2 style="margin-bottom: 20px;">New Order Received</h2>
+
+        <p><strong>Order ID:</strong> ${orderId}</p>
+
+        <p><strong>Name:</strong> ${fullName}</p>
+
+        <p><strong>Phone:</strong> ${customer.phone || ""}</p>
+
+        <p><strong>Email:</strong> ${customer.email || ""}</p>
+
+        <p>
+          <strong>Address:</strong><br />
+          ${customer.address || ""}<br />
+          ${customer.city || ""}${customer.city && customer.state ? ", " : ""}${customer.state || ""}<br />
+          ${customer.zipCode || ""}, India
+        </p>
+
+        <h3 style="margin-top: 24px; margin-bottom: 12px;">Order Items</h3>
+        ${itemsHtml}
+
+        <div style="margin-top: 20px;">
+          <p><strong>Subtotal:</strong> ₹${subtotal.toFixed(2)}</p>
+          <p><strong>Tax:</strong> ₹${tax.toFixed(2)}</p>
+          <p><strong>Shipping:</strong> ${shipping === 0 ? "FREE" : `₹${shipping.toFixed(2)}`}</p>
+          <p style="font-size: 18px; margin-top: 10px;"><strong>Total Amount:</strong> ₹${total.toFixed(2)}</p>
+        </div>
+
+        <p><strong>Order Date:</strong> ${orderDate}</p>
+      </div>
     `;
 
     const response = await fetch("https://api.resend.com/emails", {
@@ -37,7 +85,7 @@ export async function sendOrderEmail(order: any) {
       body: JSON.stringify({
         from: "Rima Cosmetics <onboarding@resend.dev>",
         to: [businessEmail],
-        subject: `New Order ${order.id}`,
+        subject: "New Order Received",
         html: emailHtml,
       }),
     });
