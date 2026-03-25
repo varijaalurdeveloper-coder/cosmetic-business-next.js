@@ -5,30 +5,29 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Package, ChevronRight } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider"; // ✅ FIXED
 
 type Order = {
   id: string;
   createdAt: string;
-  totals: {
-    total: number;
-  };
+  totals: { total: number };
   status: string;
   items: any[];
 };
 
 export default function OrdersPage() {
+  const { accessToken } = useAuth(); // ✅ FIXED
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch real orders
   useEffect(() => {
+    if (!accessToken) return;
+
     const fetchOrders = async () => {
       try {
-        const token = localStorage.getItem("token"); // adjust if different
-
         const res = await fetch("/api/orders", {
           headers: {
-            Authorization: token ? `Bearer ${token}` : "",
+            Authorization: `Bearer ${accessToken}`, // ✅ FIXED
           },
         });
 
@@ -45,7 +44,7 @@ export default function OrdersPage() {
     };
 
     fetchOrders();
-  }, []);
+  }, [accessToken]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -60,78 +59,48 @@ export default function OrdersPage() {
     }
   };
 
-  // ✅ Loading state
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading your orders...</p>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading your orders...</div>;
   }
 
-  // ✅ Empty state
   if (orders.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="mb-2">No Orders Yet</h1>
-          <p className="text-gray-600 mb-8">
-            You haven't placed any orders yet. Start shopping!
-          </p>
+          <h1>No Orders Yet</h1>
           <Link href="/products">
-            <Button className="bg-green-600 hover:bg-green-700">
-              Shop Now
-            </Button>
+            <Button className="mt-4">Shop Now</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  // ✅ Orders list
   return (
     <div className="min-h-screen bg-gray-50 py-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-4">
         <h1 className="mb-8">Your Orders</h1>
 
         <div className="space-y-4">
           {orders.map((order) => (
             <Link key={order.id} href={`/orders/${order.id}`}>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4 mb-2">
-                        <h3 className="font-semibold text-lg">{order.id}</h3>
-
-                        {/* ✅ Status badge */}
-                        <span
-                          className={`text-sm font-medium px-3 py-1 rounded-full ${getStatusColor(
-                            order.status
-                          )}`}
-                        >
-                          {order.status}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-gray-600">
-                        Order date:{" "}
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
-
-                      <p className="text-sm text-gray-600">
-                        {order.items?.length || 0} item
-                        {order.items?.length > 1 ? "s" : ""}
-                      </p>
+              <Card className="cursor-pointer hover:shadow-lg">
+                <CardContent className="p-6 flex justify-between">
+                  <div>
+                    <div className="flex gap-3 items-center">
+                      <h3>{order.id}</h3>
+                      <span className={`px-2 py-1 rounded ${getStatusColor(order.status)}`}>
+                        {order.status}
+                      </span>
                     </div>
+                    <p>{new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p>{order.items.length} items</p>
+                  </div>
 
-                    <div className="text-right">
-                      <p className="font-semibold text-lg">
-                        ₹{order.totals?.total?.toFixed(2)}
-                      </p>
-                      <ChevronRight className="h-5 w-5 text-gray-400 mt-2" />
-                    </div>
+                  <div className="text-right">
+                    <p>₹{order.totals.total.toFixed(2)}</p>
+                    <ChevronRight className="mt-2" />
                   </div>
                 </CardContent>
               </Card>

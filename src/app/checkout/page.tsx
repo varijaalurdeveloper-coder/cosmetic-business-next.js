@@ -15,8 +15,9 @@ import { ChevronLeft } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth(); // ✅ FIXED
   const { cart, clearCart } = useCart();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -69,7 +70,6 @@ export default function CheckoutPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ FIXED SUBMIT FUNCTION
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -87,14 +87,11 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      // ✅ Get token
-      const token = localStorage.getItem("token");
-
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "", // ✅ CRITICAL FIX
+          Authorization: accessToken ? `Bearer ${accessToken}` : "", // ✅ FIXED
         },
         body: JSON.stringify({
           customer: formData,
@@ -107,7 +104,7 @@ export default function CheckoutPage() {
 
       if (data.success) {
         clearCart();
-        router.push("/order-success"); // better than window.location
+        router.push("/order-success");
       } else {
         toast.error(data.error || "Failed to place order");
       }
@@ -141,100 +138,27 @@ export default function CheckoutPage() {
                   <div>
                     <h3 className="font-semibold mb-4">Shipping Address</h3>
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>First Name *</Label>
-                        <Input
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label>Last Name *</Label>
-                        <Input
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
+                      <Input name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required />
+                      <Input name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Email *</Label>
-                      <Input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Phone</Label>
-                      <Input
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                      />
-                    </div>
+                    <Input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required />
+                    <Input name="phone" placeholder="Phone" value={formData.phone} onChange={handleChange} />
                   </div>
 
-                  <div>
-                    <Label>Address *</Label>
-                    <Input
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
+                  <Input name="address" placeholder="Address" value={formData.address} onChange={handleChange} required />
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>City *</Label>
-                      <Input
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>State</Label>
-                      <Input
-                        name="state"
-                        value={formData.state}
-                        onChange={handleChange}
-                      />
-                    </div>
-                    <div>
-                      <Label>ZIP Code</Label>
-                      <Input
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleChange}
-                      />
-                    </div>
+                    <Input name="city" placeholder="City" value={formData.city} onChange={handleChange} required />
+                    <Input name="state" placeholder="State" value={formData.state} onChange={handleChange} />
+                    <Input name="zipCode" placeholder="ZIP Code" value={formData.zipCode} onChange={handleChange} />
                   </div>
 
-                  <div>
-                    <Label>Order Notes</Label>
-                    <Textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleChange}
-                    />
-                  </div>
+                  <Textarea name="notes" placeholder="Notes" value={formData.notes} onChange={handleChange} />
 
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
+                  <Button type="submit" disabled={isSubmitting} className="w-full bg-green-600 hover:bg-green-700">
                     {isSubmitting ? "Processing..." : "Place Order"}
                   </Button>
                 </form>
@@ -250,41 +174,17 @@ export default function CheckoutPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {cart.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="flex justify-between text-sm"
-                  >
-                    <span>
-                      {item.product.name} x {item.quantity}
-                    </span>
-                    <span>
-                      ₹
-                      {(item.product.price * item.quantity).toFixed(2)}
-                    </span>
+                  <div key={item.product.id} className="flex justify-between text-sm">
+                    <span>{item.product.name} x {item.quantity}</span>
+                    <span>₹{(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
 
                 <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <span>₹{tax.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Shipping</span>
-                    <span>
-                      {shipping === 0
-                        ? "FREE"
-                        : `₹${shipping.toFixed(2)}`}
-                    </span>
-                  </div>
-                  <div className="border-t pt-4 flex justify-between font-semibold text-lg">
-                    <span>Total</span>
-                    <span>₹{total.toFixed(2)}</span>
-                  </div>
+                  <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>Tax</span><span>₹{tax.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>Shipping</span><span>{shipping === 0 ? "FREE" : `₹${shipping}`}</span></div>
+                  <div className="border-t pt-4 flex justify-between font-semibold"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 </div>
               </CardContent>
             </Card>

@@ -1,20 +1,29 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 export async function verifyUser(authHeader?: string | null) {
   if (!authHeader) return null;
 
-  // Without Supabase environment variables configured, 
-  // create a mock user from the auth header
   try {
     const token = authHeader.replace("Bearer ", "");
-    
-    // Return a mock user object
+
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error || !data.user) {
+      console.error("Invalid token:", error);
+      return null;
+    }
+
     return {
-      id: `user_${Date.now()}`,
-      email: "user@example.com",
-      user_metadata: {
-        name: "Guest User",
-      },
+      id: data.user.id, 
+      email: data.user.email,
     };
   } catch (error) {
+    console.error("verifyUser error:", error);
     return null;
   }
 }
