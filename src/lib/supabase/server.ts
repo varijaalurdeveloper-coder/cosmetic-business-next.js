@@ -1,10 +1,34 @@
-import { createClient } from "@supabase/supabase-js";
+// file: /lib/supabase/server.ts
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("Missing required Supabase server environment variables.\nDefine SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel Environment Variables.");
+export async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          try {
+            cookieStore.set(name, value, options);
+          } catch (error) {
+            // Handle cases where we can't set cookies (e.g., in certain server contexts)
+          }
+        },
+        remove(name: string, options: any) {
+          try {
+            cookieStore.delete(name);
+          } catch (error) {
+            // Handle cases where we can't remove cookies
+          }
+        },
+      },
+    }
+  );
 }
-
-export const supabase = createClient(supabaseUrl, serviceRoleKey);

@@ -107,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log("📡 Calling signup API");
       const [firstName, ...rest] = name.trim().split(" ");
       const lastName = rest.join(" ");
 
@@ -122,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
         }),
       });
+      console.log("📡 Response status:", response.status);
 
       const result = await response.json();
 
@@ -145,6 +147,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
+      // First, try admin login
+      const adminLoginResponse = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+        credentials: "include", // Include cookies in the request
+      });
+
+      if (adminLoginResponse.ok) {
+        const adminData = await adminLoginResponse.json();
+        
+        if (adminData.isAdmin) {
+          const user: User = {
+            id: adminData.user.id,
+            email: adminData.user.email,
+            name: adminData.user.name,
+            role: "admin",
+          };
+
+          setUser(user);
+          setAccessToken(adminData.user.id); // Use ID as token for admin
+          return { success: true };
+        }
+      }
+
+      // If admin login fails, try Supabase authentication for customers
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -186,6 +219,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Clear admin session by calling logout endpoint
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {
+        // Endpoint may not exist yet, continue with Supabase logout
+      });
+
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Logout error:", error);
