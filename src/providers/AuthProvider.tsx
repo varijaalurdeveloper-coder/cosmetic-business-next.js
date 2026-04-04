@@ -24,39 +24,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
+  // ✅ Initialize session
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error("Session error:", error);
-          setUser(null);
-          setAccessToken(null);
-          return;
-        }
-
+        const { data } = await supabase.auth.getSession();
         const session = data.session;
 
         if (session?.user) {
-          const { data: userData, error: userError } = await supabase.auth.getUser();
-
-          if (userError || !userData.user) {
-            console.error("User verification failed:", userError);
-            await supabase.auth.signOut();
-            setUser(null);
-            setAccessToken(null);
-            return;
-          }
-
           const user: User = {
-            id: userData.user.id,
-            email: userData.user.email || "",
+            id: session.user.id,
+            email: session.user.email || "",
             name:
-              userData.user.user_metadata?.fullName ||
-              userData.user.user_metadata?.name ||
+              session.user.user_metadata?.fullName ||
+              session.user.user_metadata?.name ||
               "User",
-            role: userData.user.user_metadata?.role || "customer",
+            role: session.user.user_metadata?.role || "customer",
           };
 
           setUser(user);
@@ -66,17 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAccessToken(null);
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
-        setUser(null);
-        setAccessToken(null);
+        console.error("Auth init error:", error);
       }
     };
 
     initAuth();
 
+    // ✅ Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const user: User = {
           id: session.user.id,
@@ -96,26 +78,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
+  // ✅ SIGNUP (calls API)
   const signup = async (
     email: string,
     password: string,
     name: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log("📡 Calling signup API");
       const [firstName, ...rest] = name.trim().split(" ");
       const lastName = rest.join(" ");
 
-      const response = await fetch("/api/auth/signup", {
+      const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // ✅ IMPORTANT
         body: JSON.stringify({
           firstName: firstName || "",
           lastName: lastName || "",
@@ -123,15 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
         }),
       });
-      console.log("📡 Response status:", response.status);
 
-      const result = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        return {
-          success: false,
-          error: result.error || "Signup failed. Please try again.",
-        };
+      if (!res.ok) {
+        return { success: false, error: data.error };
       }
 
       return { success: true };
@@ -142,51 +119,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ✅ LOGIN (admin + user)
   const login = async (
     email: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // First, try admin login
-      const adminLoginResponse = await fetch("/api/auth/login", {
+      // 🔐 Try admin login first
+      const adminRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // ✅ IMPORTANT
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password,
         }),
-        credentials: "include", // Include cookies in the request
       });
 
-      if (adminLoginResponse.ok) {
-        const adminData = await adminLoginResponse.json();
-        
-        if (adminData.isAdmin) {
+      if (adminRes.ok) {
+        const data = await adminRes.json();
+
+        if (data.isAdmin) {
           const user: User = {
-            id: adminData.user.id,
-            email: adminData.user.email,
-            name: adminData.user.name,
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
             role: "admin",
           };
 
           setUser(user);
-          setAccessToken(adminData.user.id); // Use ID as token for admin
+          setAccessToken("admin-session"); // simple marker
           return { success: true };
         }
       }
 
-      // If admin login fails, try Supabase authentication for customers
+      // 👤 Fallback: normal user login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
-        console.error("Login error:", error.message);
-        setUser(null);
-        setAccessToken(null);
         const errorInfo = getAuthErrorMessage(error);
         return { success: false, error: errorInfo.message };
       }
@@ -207,36 +182,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true };
       }
 
-      return { success: false, error: "Login failed. Please try again." };
+      return { success: false, error: "Login failed" };
     } catch (error) {
       console.error("Login error:", error);
-      setUser(null);
-      setAccessToken(null);
       const errorInfo = getAuthErrorMessage(error);
       return { success: false, error: errorInfo.message };
     }
   };
 
+  // ✅ LOGOUT
   const logout = async () => {
     try {
-      // Clear admin session by calling logout endpoint
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
-      }).catch(() => {
-        // Endpoint may not exist yet, continue with Supabase logout
-      });
+      }).catch(() => {});
 
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Logout error:", error);
-      }
+      await supabase.auth.signOut();
+
       setUser(null);
       setAccessToken(null);
     } catch (error) {
       console.error("Logout error:", error);
-      setUser(null);
-      setAccessToken(null);
     }
   };
 
@@ -256,10 +223,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ✅ Hook
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
 }

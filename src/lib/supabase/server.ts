@@ -1,10 +1,12 @@
 /// file: src/lib/supabase/server.ts
 
+// file: src/lib/supabase/server.ts
+
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function createClient() {
-  const cookieStore = cookies();
+export function createClient() {
+  const cookieStore = cookies(); // ✅ keep sync (correct for Next.js)
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,16 +18,16 @@ export async function createClient() {
         },
         set(name: string, value: string, options: any) {
           try {
-            cookieStore.set(name, value, options);
-          } catch {
-            // ignore (server-only context)
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.error("❌ Cookie set error:", error);
           }
         },
         remove(name: string, options: any) {
           try {
-            cookieStore.delete(name);
-          } catch {
-            // ignore
+            cookieStore.set({ name, value: "", ...options });
+          } catch (error) {
+            console.error("❌ Cookie remove error:", error);
           }
         },
       },

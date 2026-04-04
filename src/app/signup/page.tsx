@@ -7,13 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { toast } from "sonner";
-import { useAuth } from "@/providers/AuthProvider";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signup } = useAuth();
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -22,27 +27,38 @@ export default function SignupPage() {
     confirmPassword: "",
     agreeToTerms: false,
   });
+
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, type, checked, value } = e.target;
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    // ✅ Real-time password validation
+    if (name === "password") {
+      if (value.length < 8) {
+        setPasswordError("Password must be at least 8 characters");
+      } else {
+        setPasswordError("");
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("🚀 FORM SUBMITTED");
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.email ||
+      !formData.password
+    ) {
+      toast.error("Please fill all fields");
       return;
     }
 
@@ -51,26 +67,42 @@ export default function SignupPage() {
       return;
     }
 
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
     if (!formData.agreeToTerms) {
-      toast.error("Please agree to the terms and conditions");
+      toast.error("Please accept terms");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const fullName = `${formData.firstName} ${formData.lastName}`;
-      const result = await signup(formData.email, formData.password, fullName);
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-      if (result.success) {
-        toast.success("Account created successfully!");
-        router.push("/login");
-      } else {
-        toast.error(result.error || "Signup failed. Please try again.");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Signup failed");
       }
-    } catch (error) {
-      console.error("Signup error:", error);
-      toast.error("An error occurred. Please try again later.");
+
+      toast.success("Account created successfully!");
+      router.push("/login");
+    } catch (err: any) {
+      toast.error(err.message || "Signup failed");
     } finally {
       setIsLoading(false);
     }
@@ -79,124 +111,109 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-2 text-center">
+        <CardHeader className="text-center space-y-2">
           <CardTitle className="text-2xl">Create Account</CardTitle>
           <CardDescription>
-            Join Rima Cosmetics and start shopping
+            Join your cosmetic store and start shopping
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Fields */}
+            {/* First + Last Name */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label>First Name</Label>
                 <Input
-                  id="firstName"
                   name="firstName"
-                  placeholder="John"
                   value={formData.firstName}
                   onChange={handleChange}
                   disabled={isLoading}
-                  required
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label>Last Name</Label>
                 <Input
-                  id="lastName"
                   name="lastName"
-                  placeholder="Doe"
                   value={formData.lastName}
                   onChange={handleChange}
                   disabled={isLoading}
-                  required
                 />
               </div>
             </div>
 
-            {/* Email Field */}
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label>Email</Label>
               <Input
-                id="email"
                 name="email"
                 type="email"
-                placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
                 disabled={isLoading}
-                required
               />
             </div>
 
-            {/* Password Field */}
+            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label>Password</Label>
               <Input
-                id="password"
                 name="password"
                 type="password"
-                placeholder="At least 8 characters"
                 value={formData.password}
                 onChange={handleChange}
                 disabled={isLoading}
-                required
               />
+
+              {/* ✅ Real-time error */}
+              {passwordError && (
+                <p className="text-red-500 text-sm">{passwordError}</p>
+              )}
             </div>
 
-            {/* Confirm Password Field */}
+            {/* Confirm Password */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label>Confirm Password</Label>
               <Input
-                id="confirmPassword"
                 name="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 disabled={isLoading}
-                required
               />
             </div>
 
-            {/* Terms Checkbox */}
-            <div className="flex items-start gap-2 pt-2">
+            {/* Terms */}
+            <div className="flex items-center gap-2">
               <Checkbox
-                id="agreeToTerms"
                 checked={formData.agreeToTerms}
                 onCheckedChange={(checked) =>
-                  setFormData(prev => ({ ...prev, agreeToTerms: checked === true }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    agreeToTerms: checked === true,
+                  }))
                 }
                 disabled={isLoading}
               />
-              <label htmlFor="agreeToTerms" className="text-sm text-gray-600 cursor-pointer">
-                I agree to the{" "}
-                <Link href="#" className="text-green-600 hover:text-green-700">
-                  terms and conditions
-                </Link>
-              </label>
+              <span className="text-sm">I agree to terms</span>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white h-10 mt-6"
+              disabled={isLoading || passwordError !== ""}
+              className="w-full"
             >
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {isLoading ? "Creating..." : "Create Account"}
             </Button>
           </form>
 
-          {/* Login Link */}
-          <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600">Already have an account? </span>
-            <Link
-              href="/login"
-              className="font-medium text-green-600 hover:text-green-700"
-            >
-              Sign in here
+          {/* Login link */}
+          <div className="mt-4 text-center text-sm">
+            Already have an account?{" "}
+            <Link href="/login" className="text-green-600">
+              Login
             </Link>
           </div>
         </CardContent>
