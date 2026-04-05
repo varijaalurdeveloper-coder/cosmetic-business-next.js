@@ -27,31 +27,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ✅ Initialize session
   useEffect(() => {
     const initAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const session = data.session;
+  try {
+    // 🔥 FIRST: Check admin session
+    const res = await fetch("/api/auth/me", {
+      credentials: "include",
+    });
 
-        if (session?.user) {
-          const user: User = {
-            id: session.user.id,
-            email: session.user.email || "",
-            name:
-              session.user.user_metadata?.fullName ||
-              session.user.user_metadata?.name ||
-              "User",
-            role: session.user.user_metadata?.role || "customer",
-          };
+    const adminData = await res.json();
 
-          setUser(user);
-          setAccessToken(session.access_token);
-        } else {
-          setUser(null);
-          setAccessToken(null);
-        }
-      } catch (error) {
-        console.error("Auth init error:", error);
-      }
-    };
+    if (adminData?.isAdmin) {
+      setUser(adminData.user);
+      setAccessToken("admin-session");
+      return;
+    }
+
+    // 👤 THEN: fallback to Supabase
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+
+    if (session?.user) {
+      const user: User = {
+        id: session.user.id,
+        email: session.user.email || "",
+        name:
+          session.user.user_metadata?.fullName ||
+          session.user.user_metadata?.name ||
+          "User",
+        role: session.user.user_metadata?.role || "customer",
+      };
+
+      setUser(user);
+      setAccessToken(session.access_token);
+    } else {
+      setUser(null);
+      setAccessToken(null);
+    }
+  } catch (error) {
+    console.error("Auth init error:", error);
+    setUser(null);
+    setAccessToken(null);
+  }
+};
 
     initAuth();
 
