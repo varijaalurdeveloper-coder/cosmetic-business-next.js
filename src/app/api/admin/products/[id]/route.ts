@@ -2,36 +2,27 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyAdminSession } from "@/lib/admin-auth";
 
-// Initialize Supabase client with service role key for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("Missing required Supabase environment variables");
-}
+// ✅ helper
+const jsonError = (msg: string, status = 500) =>
+  NextResponse.json({ success: false, error: msg }, { status });
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-// GET single product by ID - admin only
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+// ✅ GET SINGLE
+export async function GET(req: Request, { params }: any) {
   try {
-    // Verify admin access (server-side validation)
     const adminCheck = await verifyAdminSession();
-    if (!adminCheck.isAdmin) {
-      return adminCheck.response;
+
+    if (!adminCheck?.isAdmin) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const { id } = params;
+    const id = params?.id;
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "Product ID is required" },
-        { status: 400 }
-      );
-    }
+    if (!id) return jsonError("Product ID required", 400);
 
     const { data, error } = await supabase
       .from("products")
@@ -39,105 +30,68 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    if (error) {
-      console.error("Supabase error:", error);
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+    if (error || !data) {
+      console.error("❌ GET ONE:", error);
+      return jsonError("Product not found", 404);
     }
-
-    if (!data) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
-    }
-
-    // Format response
-    const formattedProduct = {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      category: data.category,
-      image: data.image_url,
-      inStock: data.in_stock,
-      volume: data.volume,
-    };
 
     return NextResponse.json({
       success: true,
-      product: formattedProduct,
+      product: {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        category: data.category,
+        image: data.image_url,
+        inStock: data.in_stock,
+        volume: data.volume,
+      },
     });
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("❌ GET ERROR:", err);
+    return jsonError("Internal server error");
   }
 }
 
-// PUT update product by ID - admin only
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+// ✅ UPDATE
+export async function PUT(req: Request, { params }: any) {
   try {
-    // Verify admin access (server-side validation)
     const adminCheck = await verifyAdminSession();
-    if (!adminCheck.isAdmin) {
-      return adminCheck.response;
+
+    if (!adminCheck?.isAdmin) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const { id } = params;
-    const body = await req.json();
-    const { name, description, price, image, category, inStock, volume } =
-      body;
+    const id = params?.id;
+    if (!id) return jsonError("Product ID required", 400);
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "Product ID is required" },
-        { status: 400 }
-      );
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonError("Invalid JSON", 400);
     }
 
-    // Validate at least one field is provided
-    if (
-      !name &&
-      !description &&
-      price === undefined &&
-      !image &&
-      !category &&
-      inStock === undefined &&
-      !volume
-    ) {
-      return NextResponse.json(
-        { error: "At least one field must be provided for update" },
-        { status: 400 }
-      );
-    }
+    console.log("✏️ UPDATE:", body);
 
-    // Validate price if provided
-    if (price !== undefined && (typeof price !== "number" || price < 0)) {
-      return NextResponse.json(
-        { error: "Price must be a positive number" },
-        { status: 400 }
-      );
-    }
-
-    // Build update object with only provided fields
     const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (price !== undefined) updateData.price = price;
-    if (image !== undefined) updateData.image_url = image;
-    if (category !== undefined) updateData.category = category;
-    if (inStock !== undefined) updateData.in_stock = inStock;
-    if (volume !== undefined) updateData.volume = volume;
 
-    // Update product
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.price !== undefined) {
+      if (isNaN(body.price)) return jsonError("Invalid price", 400);
+      updateData.price = body.price;
+    }
+    if (body.image !== undefined) updateData.image_url = body.image;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.inStock !== undefined) updateData.in_stock = body.inStock;
+    if (body.volume !== undefined) updateData.volume = body.volume;
+
+    if (Object.keys(updateData).length === 0) {
+      return jsonError("No fields to update", 400);
+    }
+
     const { data, error } = await supabase
       .from("products")
       .update(updateData)
@@ -145,94 +99,59 @@ export async function PUT(
       .select()
       .single();
 
-    if (error) {
-      console.error("Supabase error:", error);
-      if (error.code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Product not found" },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json(
-        { error: "Failed to update product" },
-        { status: 500 }
-      );
+    if (error || !data) {
+      console.error("❌ UPDATE ERROR:", error);
+      return jsonError("Update failed", 500);
     }
-
-    if (!data) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
-    }
-
-    // Format response
-    const formattedProduct = {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      category: data.category,
-      image: data.image_url,
-      inStock: data.in_stock,
-      volume: data.volume,
-    };
 
     return NextResponse.json({
       success: true,
-      message: "Product updated successfully",
-      product: formattedProduct,
+      message: "Updated",
+      product: {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        category: data.category,
+        image: data.image_url,
+        inStock: data.in_stock,
+        volume: data.volume,
+      },
     });
-  } catch (error) {
-    console.error("Error updating product:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("❌ PUT ERROR:", err);
+    return jsonError("Internal server error");
   }
 }
 
-// DELETE product by ID - admin only
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+// ✅ DELETE
+export async function DELETE(req: Request, { params }: any) {
   try {
-    // Verify admin access (server-side validation)
     const adminCheck = await verifyAdminSession();
-    if (!adminCheck.isAdmin) {
-      return adminCheck.response;
+
+    if (!adminCheck?.isAdmin) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const { id } = params;
+    const id = params?.id;
+    if (!id) return jsonError("Product ID required", 400);
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "Product ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Delete product
-    const { error } = await supabase.from("products").delete().eq("id", id);
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
 
     if (error) {
-      console.error("Supabase error:", error);
-      return NextResponse.json(
-        { error: "Failed to delete product" },
-        { status: 500 }
-      );
+      console.error("❌ DELETE ERROR:", error);
+      return jsonError("Delete failed", 500);
     }
 
     return NextResponse.json({
       success: true,
-      message: "Product deleted successfully",
+      message: "Deleted",
     });
-  } catch (error) {
-    console.error("Error deleting product:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("❌ DELETE ERROR:", err);
+    return jsonError("Internal server error");
   }
 }

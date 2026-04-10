@@ -39,6 +39,8 @@ export async function uploadImage(
     const fileName = `product-${timestamp}-${random}.${fileExtension}`;
 
     // Upload to Supabase Storage
+    const user = await supabase.auth.getUser();
+    console.log("👤 Supabase user:", user);
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(fileName, file, {
