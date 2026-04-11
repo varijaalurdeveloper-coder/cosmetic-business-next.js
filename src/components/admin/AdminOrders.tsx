@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface OrderItem {
@@ -47,24 +48,24 @@ export function AdminOrders() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Fetch all orders (admin only)
+  // Fetch orders
   useEffect(() => {
     if (!isAdmin) return;
 
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/admin/orders");
-        const data = await response.json();
+        const res = await fetch("/api/admin/orders");
+        const data = await res.json();
 
         if (data.error) {
-          toast.error(data.error || "Failed to load orders");
-        } else if (data.orders) {
-          setOrders(data.orders);
+          toast.error(data.error);
+        } else {
+          setOrders(data.orders || []);
         }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
+      } catch (err) {
         toast.error("Failed to load orders");
       } finally {
         setLoading(false);
@@ -75,7 +76,7 @@ export function AdminOrders() {
   }, [isAdmin]);
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800";
       case "confirmed":
@@ -89,47 +90,67 @@ export function AdminOrders() {
     }
   };
 
-  const updateOrderStatus = async (
-    orderId: string,
-    newStatus: string
-  ) => {
-    if (!["pending", "confirmed", "shipped", "delivered"].includes(newStatus)) {
-      toast.error("Invalid status");
-      return;
-    }
-
+  // ✅ UPDATE STATUS
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
+
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        toast.error(data.error || "Failed to update order status");
+      if (!res.ok) {
+        toast.error(data.error);
         return;
       }
 
-      // Update local state
       setOrders((prev) =>
-        prev.map((order) =>
-          order.id === orderId
-            ? { ...order, status: newStatus as AdminOrder["status"] }
-            : order
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus as any } : o
         )
       );
 
-      toast.success("Order status updated successfully");
-    } catch (error) {
-      console.error("Error updating order:", error);
-      toast.error("Failed to update order status");
+      toast.success("Status updated");
+    } catch {
+      toast.error("Update failed");
     } finally {
       setUpdating(null);
+    }
+  };
+
+  // ✅ DELETE ORDER
+  const deleteOrder = async (orderId: string) => {
+    const confirmDelete = confirm(
+      "Are you sure you want to delete this order?"
+    );
+    if (!confirmDelete) return;
+
+    setDeleting(orderId);
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error);
+        return;
+      }
+
+      // remove from UI
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+
+      toast.success("Order deleted");
+    } catch {
+      toast.error("Delete failed");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -139,11 +160,8 @@ export function AdminOrders() {
         <CardHeader>
           <CardTitle>Manage Orders</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <p className="ml-3 text-gray-600">Loading orders...</p>
-          </div>
+        <CardContent className="text-center py-8">
+          Loading orders...
         </CardContent>
       </Card>
     );
@@ -155,8 +173,8 @@ export function AdminOrders() {
         <CardHeader>
           <CardTitle>Manage Orders</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-center py-8 text-red-600">Admin access required</p>
+        <CardContent className="text-center py-8 text-red-600">
+          Admin access required
         </CardContent>
       </Card>
     );
@@ -164,61 +182,63 @@ export function AdminOrders() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Manage Orders</CardTitle>
-          <Badge variant="outline">{orders.length} orders</Badge>
-        </div>
+      <CardHeader className="flex flex-row justify-between items-center">
+        <CardTitle>Manage Orders</CardTitle>
+        <Badge variant="outline">{orders.length} orders</Badge>
       </CardHeader>
+
       <CardContent>
         {orders.length === 0 ? (
-          <p className="text-center py-8 text-gray-600">No orders found</p>
+          <p className="text-center py-8 text-gray-500">No orders found</p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
+                  <TableHead>ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {orders.map((order) => (
                   <TableRow key={order.id}>
-                    <TableCell className="font-mono text-sm font-semibold">
-                      {order.id.substring(0, 8)}
+                    <TableCell className="font-mono text-sm">
+                      {order.id.slice(0, 8)}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-700">
-                      {order.customerName}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
+
+                    <TableCell>{order.customerName}</TableCell>
+                    <TableCell className="text-gray-600">
                       {order.email}
                     </TableCell>
-                    <TableCell className="text-sm text-center">
-                      <Badge variant="secondary">{order.items.length}</Badge>
+
+                    <TableCell>
+                      <Badge>{order.items.length}</Badge>
                     </TableCell>
+
                     <TableCell className="font-semibold">
-                      ₹{parseFloat(order.total as any).toFixed(2)}
+                      ₹{Number(order.total).toFixed(2)}
                     </TableCell>
+
                     <TableCell>
                       <Badge className={getStatusColor(order.status)}>
                         {order.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {new Date(order.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
+
+                    <TableCell className="text-gray-600 text-sm">
+                      {new Date(order.createdAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="text-right">
+
+                    {/* ✅ ACTION COLUMN FIXED */}
+                    <TableCell className="flex items-center gap-2 justify-end">
+                      {/* STATUS DROPDOWN FIX */}
                       <Select
                         value={order.status}
                         onValueChange={(value) =>
@@ -226,16 +246,31 @@ export function AdminOrders() {
                         }
                         disabled={updating === order.id}
                       >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue placeholder="Status" />
                         </SelectTrigger>
-                        <SelectContent>
+
+                        {/* FIX: proper width + z-index */}
+                        <SelectContent className="z-50 min-w-[140px]">
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="confirmed">Confirmed</SelectItem>
                           <SelectItem value="shipped">Shipped</SelectItem>
                           <SelectItem value="delivered">Delivered</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* ✅ DELETE BUTTON */}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={
+                          deleting === order.id ||
+                          order.status !== "delivered"
+                        }
+                        onClick={() => deleteOrder(order.id)}
+                      >
+                        Delete
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
