@@ -52,7 +52,7 @@ export default function HomePage() {
   };
 
   // ✅ OPTIONAL: show only first 8 products on homepage
-  const displayProducts = products.slice(0, 8);
+  const displayProducts = products;
 
   if (loading) {
     return (

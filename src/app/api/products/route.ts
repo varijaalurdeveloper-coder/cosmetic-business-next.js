@@ -32,7 +32,7 @@ export async function GET() {
     }));
 
     // ✅ Merge static + DB products
-    const allProducts = [...staticProducts, ...dbProducts];
+    const allProducts = [...dbProducts, ...staticProducts];
 
     return NextResponse.json({ products: allProducts });
   } catch (err) {
