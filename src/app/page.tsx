@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -10,23 +11,60 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "../components/ui/carousel";
-import { products } from "../lib/data/products";
 import { useCart } from "../providers/CartProvider";
-import { ShoppingCart, Leaf, Heart, Sparkles, Shield } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { toast } from "sonner";
+import { Product } from "@/types";
 
 export default function HomePage() {
   const { addToCart } = useCart();
 
-  const handleAddToCart = (product: typeof products[0]) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ FETCH PRODUCTS (static + admin via API)
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        console.log("📡 Fetching homepage products...");
+
+        const res = await fetch("/api/products");
+        const data = await res.json();
+
+        console.log("✅ Homepage products:", data);
+
+        setProducts(data.products || []);
+      } catch (err) {
+        console.error("❌ Fetch error:", err);
+        toast.error("Failed to load products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const handleAddToCart = (product: Product) => {
     addToCart(product);
     toast.success(`${product.name} added to cart!`);
   };
 
+  // ✅ OPTIONAL: show only first 8 products on homepage
+  const displayProducts = products.slice(0, 8);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading products...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* Hero Section (unchanged) */}
       <section className="relative h-[600px] bg-gradient-to-r from-green-50 to-emerald-50">
         <div className="absolute inset-0">
           <ImageWithFallback
@@ -84,7 +122,7 @@ export default function HomePage() {
             className="w-full"
           >
             <CarouselContent>
-              {products.map((product) => (
+              {displayProducts.map((product) => (
                 <CarouselItem
                   key={product.id}
                   className="md:basis-1/2 lg:basis-1/4"
@@ -139,4 +177,3 @@ export default function HomePage() {
     </div>
   );
 }
-

@@ -1,28 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { products } from "@/lib/data/products";
 import { useCart } from "@/providers/CartProvider";
 import { ShoppingCart } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { toast } from "sonner";
+import { Product } from "@/types";
 
 export default function ProductsPage() {
   const { addToCart } = useCart();
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
+  // ✅ FETCH PRODUCTS (API)
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        console.log("📡 Fetching public products...");
+
+        const res = await fetch("/api/products");
+        const data = await res.json();
+
+        console.log("✅ Products:", data);
+
+        setProducts(data.products || []);
+      } catch (err) {
+        console.error("❌ Fetch error:", err);
+        toast.error("Failed to load products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // ✅ CATEGORY LOGIC (same as before)
   const categories = Array.from(new Set(products.map(p => p.category)));
+
   const filteredProducts = selectedCategory
     ? products.filter(p => p.category === selectedCategory)
     : products;
 
-  const handleAddToCart = (product: typeof products[0]) => {
+  const handleAddToCart = (product: any) => {
     addToCart(product);
     toast.success(`${product.name} added to cart!`);
   };
+
+  // ✅ LOADING STATE
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading products...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,6 +78,7 @@ export default function ProductsPage() {
             >
               All Products
             </Button>
+
             {categories.map(category => (
               <Button
                 key={category}
@@ -49,7 +86,10 @@ export default function ProductsPage() {
                 onClick={() => setSelectedCategory(category)}
                 className={selectedCategory === category ? "bg-green-600 hover:bg-green-700" : ""}
               >
-                {category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                {category
+                  ?.split("-")
+                  .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ")}
               </Button>
             ))}
           </div>
@@ -71,10 +111,14 @@ export default function ProductsPage() {
                 </div>
 
                 <h3 className="mb-2">{product.name}</h3>
-                <p className="text-gray-600 text-sm mb-4">{product.description}</p>
+                <p className="text-gray-600 text-sm mb-4">
+                  {product.description}
+                </p>
 
                 {product.volume && (
-                  <p className="text-xs text-gray-500 mb-2">{product.volume}</p>
+                  <p className="text-xs text-gray-500 mb-2">
+                    {product.volume}
+                  </p>
                 )}
 
                 <div className="flex items-center justify-between">
@@ -98,7 +142,9 @@ export default function ProductsPage() {
 
         {filteredProducts.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">No products found in this category</p>
+            <p className="text-gray-600 mb-4">
+              No products found in this category
+            </p>
             <Button
               onClick={() => setSelectedCategory(null)}
               className="bg-green-600 hover:bg-green-700"
@@ -111,4 +157,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
