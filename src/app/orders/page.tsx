@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { OrderStatus } from "@/components/OrderStatus";
-import { Package, ChevronRight, ArrowRight } from "lucide-react";
+import { Package, ArrowRight } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 
@@ -38,25 +38,23 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
     const fetchOrders = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Pass user ID to API
         const response = await fetch("/api/orders", {
-          method: "GET",
-          headers: {
-            "x-user-id": user.id,
-          },
-        });
+  method: "GET",
+  headers: {
+    "x-user-id": user.id, // ✅ REQUIRED fallback
+  },
+});
 
         const data = await response.json();
+
+        console.log("Orders API response:", data); // ✅ debug
 
         if (!response.ok) {
           throw new Error(data.error || "Failed to load orders");
@@ -64,9 +62,12 @@ export default function OrdersPage() {
 
         if (data.success && Array.isArray(data.orders)) {
           setOrders(data.orders);
+        } else {
+          setOrders([]);
         }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Failed to load orders";
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to load orders";
         console.error("Error fetching orders:", err);
         setError(errorMsg);
         toast.error(errorMsg);
@@ -76,7 +77,7 @@ export default function OrdersPage() {
     };
 
     fetchOrders();
-  }, [user?.id]);
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -98,8 +99,12 @@ export default function OrdersPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
         <div className="text-center">
           <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Please Log In</h1>
-          <p className="text-gray-600 mb-6">You need to log in to view your orders</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Please Log In
+          </h1>
+          <p className="text-gray-600 mb-6">
+            You need to log in to view your orders
+          </p>
           <Link href="/login">
             <Button className="gap-2">
               Go to Login <ArrowRight className="h-4 w-4" />
@@ -128,9 +133,7 @@ export default function OrdersPage() {
           <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Error</h1>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Retry
-          </Button>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     );
@@ -141,8 +144,12 @@ export default function OrdersPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
         <div className="text-center">
           <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">No Orders Yet</h1>
-          <p className="text-gray-600 mb-6">You haven't placed any orders yet</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            No Orders Yet
+          </h1>
+          <p className="text-gray-600 mb-6">
+            You haven't placed any orders yet
+          </p>
           <Link href="/products">
             <Button className="gap-2">
               Start Shopping <ArrowRight className="h-4 w-4" />
@@ -156,84 +163,47 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Your Orders</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Your Orders
+          </h1>
           <p className="text-gray-600 mt-2">
             {orders.length} order{orders.length !== 1 ? "s" : ""} found
           </p>
         </div>
 
-        {/* Orders List */}
         <div className="space-y-6">
           {orders.map((order) => (
-            <Card key={order.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-lg">Order #{order.id.substring(0, 8)}</CardTitle>
-                      <Badge className={`capitalize ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Ordered on {new Date(order.createdAt).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
+            <Card key={order.id}>
+              <CardHeader className="border-b">
+                <div className="flex justify-between">
+                  <div>
+                    <CardTitle>
+                      Order #{order.id.substring(0, 8)}
+                    </CardTitle>
+                    <Badge className={getStatusColor(order.status)}>
+                      {order.status}
+                    </Badge>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-gray-900">
-                      ₹{parseFloat(order.total as any).toFixed(2)}
+                    <p className="font-bold">
+                      ₹{Number(order.total).toFixed(2)}
                     </p>
-                    <p className="text-sm text-gray-600">{order.items.length} item{order.items.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="pt-6">
-                {/* Order Status Timeline */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Order Status</h3>
-                  <OrderStatus status={order.status} />
-                </div>
+              <CardContent>
+                <OrderStatus status={order.status} />
 
-                {/* Order Items */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Items</h3>
-                  <div className="space-y-3">
-                    {order.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900 text-sm">
-                            {item.name}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            ₹{parseFloat(item.price as any)} × {item.quantity}
-                          </p>
-                        </div>
-                        <p className="font-semibold text-gray-900">
-                          ₹{(parseFloat(item.price as any) * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-                    ))}
+                {order.items.map((item) => (
+                  <div key={item.id} className="flex justify-between mt-2">
+                    <span>{item.name}</span>
+                    <span>
+                      ₹{item.price} × {item.quantity}
+                    </span>
                   </div>
-                </div>
-
-                {/* Shipping Address */}
-                <div className="mb-6 p-3 bg-gray-50 rounded-lg">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Shipping Address</h3>
-                  <p className="text-sm text-gray-700">{order.customerName}</p>
-                  <p className="text-sm text-gray-600">{order.address}</p>
-                  <p className="text-sm text-gray-600">{order.phone}</p>
-                </div>
+                ))}
               </CardContent>
             </Card>
           ))}
