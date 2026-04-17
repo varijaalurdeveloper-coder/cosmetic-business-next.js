@@ -3,9 +3,17 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+
 import { AdminProducts } from "@/components/admin/AdminProducts";
 import { AdminOrders } from "@/components/admin/AdminOrders";
+import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
+
 import { Package, TrendingUp } from "lucide-react";
 
 export default function AdminPage() {
@@ -15,7 +23,6 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Wait until auth is initialized
     if (isAdmin !== undefined) {
       setIsLoading(false);
 
@@ -25,7 +32,6 @@ export default function AdminPage() {
     }
   }, [isAdmin, router]);
 
-  // ✅ Show loading instead of blank / redirect flicker
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,14 +40,11 @@ export default function AdminPage() {
     );
   }
 
-  // Safety check
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* HEADER */}
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 py-12 border-b">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-3xl font-bold text-gray-900">
@@ -53,14 +56,21 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 py-10 space-y-10">
+        
+        {/* 🔥 FULL ANALYTICS DASHBOARD */}
+        <AdminAnalytics />
+
+        {/* =========================
+            📦 ORDERS & PRODUCTS TABS
+        ========================= */}
         <Tabs defaultValue="orders" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="orders" className="gap-2">
               <Package className="h-4 w-4" />
               Orders
             </TabsTrigger>
+
             <TabsTrigger value="products" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               Products

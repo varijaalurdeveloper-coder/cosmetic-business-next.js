@@ -43,14 +43,14 @@ export async function GET(req: Request) {
     console.log("===== GET /api/orders called =====");
 
     const admin = getAdminClient();
-
-    /**
-     * ✅ STEP 1: Try Supabase auth
-     */
     const supabase = getUserClient();
 
     let userId: string | null = null;
+    let isAdmin = false;
 
+    /**
+     * ✅ STEP 1: Get user
+     */
     try {
       const {
         data: { user },
@@ -58,29 +58,34 @@ export async function GET(req: Request) {
 
       if (user) {
         userId = user.id;
-        console.log("✅ User from Supabase:", userId);
+
+        // 🔥 IMPORTANT: detect admin from metadata
+        if ((user as any)?.user_metadata?.role === "admin") {
+          isAdmin = true;
+        }
+
+        console.log("✅ User:", userId, "Admin:", isAdmin);
       }
     } catch (err) {
-      console.log("⚠️ Supabase auth failed, fallback to header");
+      console.log("⚠️ Auth failed, fallback header");
     }
 
     /**
-     * ✅ STEP 2: FALLBACK (IMPORTANT)
+     * ✅ STEP 2: fallback
      */
     if (!userId) {
       userId = req.headers.get("x-user-id");
-      console.log("🔁 Using fallback userId:", userId);
+      console.log("🔁 Fallback userId:", userId);
     }
 
-    if (!userId) {
-      console.log("❌ No user found — returning empty orders");
+    if (!userId && !isAdmin) {
       return NextResponse.json({ success: true, orders: [] });
     }
 
     /**
-     * ✅ STEP 3: Fetch orders
+     * ✅ STEP 3: Build query
      */
-    const { data: orders, error } = await admin
+    let query = admin
       .from("orders")
       .select(`
         id,
@@ -101,8 +106,14 @@ export async function GET(req: Request) {
           quantity
         )
       `)
-      .eq("user_id", userId)
       .order("created_at", { ascending: false });
+
+    // 👇 Only filter if NOT admin
+    if (!isAdmin) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { data: orders, error } = await query;
 
     if (error) {
       console.error("Fetch orders error:", error);
@@ -112,23 +123,80 @@ export async function GET(req: Request) {
       );
     }
 
-    const formattedOrders = (orders || []).map((order: any) => ({
-      id: order.id,
-      userId: order.user_id,
-      customerName: order.customer_name,
-      email: order.email,
-      phone: order.phone,
-      address: order.address,
-      notes: order.notes,
-      total: order.total,
-      status: order.status,
-      createdAt: order.created_at,
-      items: order.order_items || [],
-    }));
+    /**
+     * ✅ STEP 4: Format for analytics
+     */
+    const formattedOrders = (orders || []).map((order: any) => {
+      const items = (order.order_items || []).map((item: any) => ({
+        id: item.id,
+        productId: item.product_id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        itemTotal: item.price * item.quantity, // 🔥 added
+      }));
+
+      const totalQuantity = items.reduce(
+        (sum: number, item: any) => sum + item.quantity,
+        0
+      );
+
+      const date = new Date(order.created_at);
+
+      return {
+        id: order.id,
+        userId: order.user_id,
+        customerName: order.customer_name,
+        email: order.email,
+        phone: order.phone,
+        address: order.address,
+        notes: order.notes,
+
+        // 🔥 Analytics fields
+        totalAmount: order.total,
+        status: order.status,
+        createdAt: order.created_at,
+
+        // 🔥 Precomputed helpers
+        itemCount: items.length,
+        totalQuantity,
+
+        // 🔥 Date breakdown (for charts)
+        day: date.getDate(),
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+
+        items,
+      };
+    });
+
+    /**
+     * ✅ STEP 5: Summary (VERY IMPORTANT)
+     */
+    const totalRevenue = formattedOrders.reduce(
+      (sum, o) => sum + o.totalAmount,
+      0
+    );
+
+    const totalOrders = formattedOrders.length;
+
+    const statusCounts = formattedOrders.reduce((acc: any, o) => {
+      acc[o.status] = (acc[o.status] || 0) + 1;
+      return acc;
+    }, {});
 
     return NextResponse.json({
       success: true,
       orders: formattedOrders,
+
+      // 🔥 Dashboard summary
+      summary: {
+        totalRevenue,
+        totalOrders,
+        avgOrderValue:
+          totalOrders > 0 ? totalRevenue / totalOrders : 0,
+        statusCounts,
+      },
     });
   } catch (error) {
     console.error("GET orders error:", error);
@@ -138,7 +206,6 @@ export async function GET(req: Request) {
     );
   }
 }
-
 /**
  * =========================
  * ✅ POST CREATE ORDER (DEBUG)

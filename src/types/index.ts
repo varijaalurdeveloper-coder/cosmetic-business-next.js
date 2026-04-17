@@ -36,17 +36,66 @@ export interface ShippingAddress {
   country?: string;
 }
 
+/**
+ * =========================
+ * ✅ ORDER ITEM (DB aligned)
+ * =========================
+ */
+export interface OrderItem {
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+
+  // 🔥 analytics
+  itemTotal: number;
+}
+
+/**
+ * =========================
+ * ✅ ORDER (ANALYTICS READY)
+ * =========================
+ */
 export interface Order {
   id: string;
+
+  // 👤 user
   userId: string;
-  items: CartItem[];
-  total: number;
+  customerName: string;
+  email: string;
+  phone: string;
+
+  // 📦 address
+  address: string;
+
+  // 🧾 order data
+  items: OrderItem[];
+  totalAmount: number; // 🔥 renamed from total
   status: OrderStatus;
-  paymentMethod: "whatsapp";
-  shippingAddress: ShippingAddress;
-  createdAt: Date;
-  updatedAt: Date;
-  estimatedDelivery?: Date;
+
+  // 📝 optional
+  notes?: string;
+
+  // 📅 timestamps (Supabase returns string)
+  createdAt: string;
+  updatedAt?: string;
+
+  // 🚚 optional
+  estimatedDelivery?: string;
+
+  /**
+   * =========================
+   * 🔥 ANALYTICS HELPERS
+   * =========================
+   */
+  itemCount: number;
+  totalQuantity: number;
+
+  // 📊 chart helpers
+  day: number;
+  month: number;
+  year: number;
 }
 
 export type UserRole = "customer" | "admin";
