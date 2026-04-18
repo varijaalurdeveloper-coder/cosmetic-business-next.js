@@ -129,17 +129,28 @@ export async function GET(req: Request) {
      */
     const dailyMap: Record<string, number> = {};
 
-    orders.forEach((o: any) => {
-      const date = new Date(o.created_at)
-        .toISOString()
-        .split("T")[0];
+// 👉 Step 1: Fill all dates in range
+let current = new Date(startDate);
 
-      dailyMap[date] = (dailyMap[date] || 0) + (o.total || 0);
-    });
+while (current <= endDate) {
+  const key = current.toISOString().split("T")[0];
+  dailyMap[key] = 0;
+  current.setDate(current.getDate() + 1);
+}
 
-    const dailySales = Object.entries(dailyMap)
-      .map(([date, revenue]) => ({ date, revenue }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+// 👉 Step 2: Add real order data
+orders.forEach((o: any) => {
+  const date = new Date(o.created_at)
+    .toISOString()
+    .split("T")[0];
+
+  dailyMap[date] += o.total || 0;
+});
+
+// 👉 Step 3: Convert to array
+const dailySales = Object.entries(dailyMap)
+  .map(([date, revenue]) => ({ date, revenue }))
+  .sort((a, b) => a.date.localeCompare(b.date));
 
     /**
      * =========================
