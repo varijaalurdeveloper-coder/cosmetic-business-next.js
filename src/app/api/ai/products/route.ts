@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { products as staticProducts } from "@/lib/data/products";
 import { createClient } from "@/lib/supabase/server";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
