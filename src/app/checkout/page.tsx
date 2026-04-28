@@ -34,7 +34,9 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!user) {
       toast.error("Please login to proceed with checkout");
-      router.push("/login");
+      // Store current URL to redirect back after login
+      const returnUrl = encodeURIComponent("/checkout");
+      router.push(`/login?redirect=${returnUrl}`);
     }
   }, [user, router]);
 
