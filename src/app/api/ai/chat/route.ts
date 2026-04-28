@@ -219,6 +219,7 @@ function findRelevantProducts(
 
 function generateReply(
   concern: BeautyConcern | null,
+  matchedKeywords: string[],
   products: Product[],
   userMessage: string
 ): string {
@@ -231,7 +232,7 @@ function generateReply(
   const productSuggestions = products.slice(0, 5).map((p) => p.name).join(", ");
   const routineSteps = concern.routine.join(" → ");
 
-  return `Based on what you've shared, I understand you're dealing with ${concern.matchedKeywords.join(" or ")}. Here's my personalized advice for you:
+  return `Based on what you've shared, I understand you're dealing with ${matchedKeywords.length > 0 ? matchedKeywords.join(" or ") : "your concern"}. Here's my personalized advice for you:
 
 💡 ${concern.advice}
 
@@ -268,7 +269,7 @@ export async function POST(request: NextRequest) {
     const relevantProducts = findRelevantProducts(products, concern, message);
 
     // Generate reply
-    const reply = generateReply(concern, relevantProducts, message);
+    const reply = generateReply(concern, matchedKeywords, relevantProducts, message);
 
     return NextResponse.json({
       reply,
