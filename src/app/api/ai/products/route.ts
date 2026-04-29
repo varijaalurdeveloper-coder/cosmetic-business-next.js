@@ -14,21 +14,45 @@ function normalizeArray(value: any): string[] {
 }
 
 /**
- * Auto-enrich product using name + description
+ * Normalize category (IMPORTANT FIX)
+ */
+function normalizeCategory(category: string) {
+  if (!category) return "general";
+
+  const c = category.toLowerCase();
+
+  if (c.includes("hair")) return "hair";
+  if (c.includes("skin") || c.includes("face") || c.includes("soap")) return "skin";
+  if (c.includes("lip")) return "lips";
+
+  return "general";
+}
+
+/**
+ * 🔥 SMART AUTO ENRICH (UPGRADED)
  */
 function autoEnrich(product: any) {
   const text = `${product.name} ${product.description}`.toLowerCase();
 
-  const autoTags = [
-    text.includes("hair") && "hair",
-    text.includes("skin") && "skin",
-    text.includes("lip") && "lips",
-    text.includes("dry") && "dry",
-    text.includes("dandruff") && "dandruff",
-    text.includes("acne") && "acne",
-  ].filter(Boolean);
+  const tags: string[] = [];
 
-  return autoTags;
+  // CATEGORY
+  if (text.includes("hair")) tags.push("hair");
+  if (text.includes("skin") || text.includes("face")) tags.push("skin");
+  if (text.includes("lip")) tags.push("lips");
+
+  // HAIR CONDITIONS
+  if (text.includes("dry")) tags.push("dry hair");
+  if (text.includes("frizzy")) tags.push("dry hair");
+  if (text.includes("dandruff")) tags.push("dandruff");
+  if (text.includes("hair fall")) tags.push("hair fall");
+
+  // SKIN CONDITIONS
+  if (text.includes("oily")) tags.push("oily skin");
+  if (text.includes("acne") || text.includes("pimple")) tags.push("acne");
+  if (text.includes("dry skin")) tags.push("dry skin");
+
+  return tags;
 }
 
 /**
@@ -56,12 +80,12 @@ function transformProduct(p: any) {
     name: p.name,
     description: p.description || "",
     price: Number(p.price) || 0,
-    category: (p.category || "general").toLowerCase(),
+    category: normalizeCategory(p.category),
     image: p.image_url || "/placeholder.png",
     inStock: p.in_stock ?? true,
     volume: p.volume,
 
-    // 🔥 AI FIELDS
+    // 🔥 AI FIELDS (IMPORTANT)
     tags: [...new Set(enrichedTags)],
     concerns,
     skin_type,
@@ -86,10 +110,8 @@ export async function GET() {
       console.error("❌ Supabase fetch error:", error);
     }
 
-    // ✅ Transform DB products
     const dbProducts = (data || []).map(transformProduct);
 
-    // ✅ Normalize static products same way
     const normalizedStaticProducts = staticProducts.map((p: any) =>
       transformProduct({
         ...p,
@@ -98,10 +120,8 @@ export async function GET() {
       })
     );
 
-    // ✅ Merge both
     const allProducts = [...dbProducts, ...normalizedStaticProducts];
 
-    // ✅ Remove duplicates (by name)
     const uniqueProducts = Array.from(
       new Map(allProducts.map((p) => [p.name.toLowerCase(), p])).values()
     );
@@ -110,7 +130,6 @@ export async function GET() {
   } catch (err) {
     console.error("❌ AI PRODUCTS API ERROR:", err);
 
-    // fallback
     const fallbackProducts = staticProducts.map((p: any) =>
       transformProduct({
         ...p,

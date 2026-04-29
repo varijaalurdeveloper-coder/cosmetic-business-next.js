@@ -19,37 +19,53 @@ interface Product {
   benefits?: string[];
 }
 
-// ✅ BETTER INTENT DETECTION
+// ✅ MULTI-INTENT DETECTION (FIXED)
 function detectIntent(message: string) {
   const text = message.toLowerCase();
 
-  let category: "hair" | "skin" | "lips" | "general" = "general";
-  let concern: string | null = null;
+  const categories = new Set<"hair" | "skin" | "lips">();
+  const concerns: string[] = [];
 
-  // 🎯 Category detection
-  if (text.includes("hair")) category = "hair";
-  else if (text.includes("lip")) category = "lips";
-  else if (text.includes("skin") || text.includes("face")) category = "skin";
+  // 🎯 CATEGORY DETECTION
+  if (text.includes("hair")) categories.add("hair");
+  if (text.includes("lip")) categories.add("lips");
+  if (text.includes("skin") || text.includes("face")) categories.add("skin");
 
-  // 🎯 Context-aware concern detection
+  // 🎯 CONCERN DETECTION
   if (text.includes("dry hair")) {
-    category = "hair";
-    concern = "dry hair";
-  } else if (text.includes("dry skin")) {
-    category = "skin";
-    concern = "dry skin";
-  } else if (text.includes("dandruff")) {
-    category = "hair";
-    concern = "dandruff";
-  } else if (text.includes("acne") || text.includes("pimple")) {
-    category = "skin";
-    concern = "acne";
-  } else if (text.includes("hair fall")) {
-    category = "hair";
-    concern = "hair fall";
+    categories.add("hair");
+    concerns.push("dry hair");
   }
 
-  return { category, concern };
+  if (text.includes("oily skin") || text.includes("oily face")) {
+    categories.add("skin");
+    concerns.push("oily skin");
+  }
+
+  if (text.includes("dry skin")) {
+    categories.add("skin");
+    concerns.push("dry skin");
+  }
+
+  if (text.includes("dandruff")) {
+    categories.add("hair");
+    concerns.push("dandruff");
+  }
+
+  if (text.includes("acne") || text.includes("pimple")) {
+    categories.add("skin");
+    concerns.push("acne");
+  }
+
+  if (text.includes("hair fall")) {
+    categories.add("hair");
+    concerns.push("hair fall");
+  }
+
+  return {
+    categories: categories.size ? Array.from(categories) : ["general"],
+    concerns,
+  };
 }
 
 // ✅ NORMALIZE CATEGORY
@@ -95,53 +111,62 @@ async function fetchAllProducts(): Promise<Product[]> {
   return [...dbProducts, ...normalizedStatic];
 }
 
-// ✅ STRICT + SMART FILTERING
-function filterProducts(products: Product[], category: string, concern: string | null) {
+// ✅ MULTI-CONCERN FILTERING (FIXED)
+function filterProducts(
+  products: Product[],
+  categories: string[],
+  concerns: string[]
+) {
   return products
     .map((product) => {
       let score = 0;
 
       const pCategory = normalizeCategory(product.category);
 
-      // ❗ STRICT CATEGORY FILTER
-      if (category !== "general" && pCategory !== category) {
+      // ✅ CATEGORY MATCH
+      if (!categories.includes("general") && !categories.includes(pCategory)) {
         return null;
       }
 
       score += 10;
 
-      if (concern) {
-        const c = concern.toLowerCase();
+      // ✅ MULTIPLE CONCERNS
+      concerns.forEach((c) => {
+        const lc = c.toLowerCase();
 
-        if (product.concerns?.some(x => x.toLowerCase().includes(c))) score += 20;
-        if (product.tags?.some(x => x.toLowerCase().includes(c))) score += 10;
-        if (product.benefits?.some(x => x.toLowerCase().includes(c))) score += 10;
-        if (product.hair_type?.some(x => x.toLowerCase().includes(c))) score += 10;
-        if (product.skin_type?.some(x => x.toLowerCase().includes(c))) score += 10;
+        if (product.concerns?.some(x => x.toLowerCase().includes(lc))) score += 20;
+        if (product.tags?.some(x => x.toLowerCase().includes(lc))) score += 10;
+        if (product.benefits?.some(x => x.toLowerCase().includes(lc))) score += 10;
+        if (product.hair_type?.some(x => x.toLowerCase().includes(lc))) score += 10;
+        if (product.skin_type?.some(x => x.toLowerCase().includes(lc))) score += 10;
 
         const text = `${product.name} ${product.description}`.toLowerCase();
-        if (text.includes(c)) score += 5;
-      }
+        if (text.includes(lc)) score += 5;
+      });
 
       return { product, score };
     })
     .filter(Boolean)
     .filter((p: any) => p.product.inStock && p.score >= 10)
     .sort((a: any, b: any) => b.score - a.score)
-    .slice(0, 5)
+    .slice(0, 6)
     .map((p: any) => p.product);
 }
 
-// ✅ RESPONSE
-function generateReply(category: string, concern: string | null, products: Product[]) {
-  let advice = "Here are some products suitable for you.";
+// ✅ BETTER RESPONSE (MULTI-CONCERN)
+function generateReply(concerns: string[], products: Product[]) {
+  let advice = "Here are some products suitable for your needs.";
 
-  if (concern === "dry hair") {
-    advice = "Dry hair needs deep hydration. Use oils, conditioners, and avoid harsh shampoos.";
-  } else if (concern === "dry skin") {
-    advice = "Dry skin needs hydration. Use aloe vera, glycerin-based and nourishing products.";
-  } else if (concern === "dandruff") {
-    advice = "Use anti-dandruff shampoos and keep your scalp clean and moisturized.";
+  if (concerns.includes("dry hair")) {
+    advice += "\n💇 Dry hair needs deep hydration. Use oils and conditioners.";
+  }
+
+  if (concerns.includes("oily skin")) {
+    advice += "\n🧴 Oily skin needs oil-control and gentle cleansing.";
+  }
+
+  if (concerns.includes("dandruff")) {
+    advice += "\n❄️ Use anti-dandruff shampoos regularly.";
   }
 
   return `
@@ -162,11 +187,11 @@ export async function POST(request: NextRequest) {
 
     const products = await fetchAllProducts();
 
-    const { category, concern } = detectIntent(message);
+    const { categories, concerns } = detectIntent(message);
 
-    const filtered = filterProducts(products, category, concern);
+    const filtered = filterProducts(products, categories, concerns);
 
-    const reply = generateReply(category, concern, filtered);
+    const reply = generateReply(concerns, filtered);
 
     return NextResponse.json({
       reply,
