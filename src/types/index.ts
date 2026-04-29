@@ -1,9 +1,19 @@
+/**
+ * =========================
+ * ✅ PRODUCT CATEGORY (AI-ALIGNED)
+ * =========================
+ */
 export type ProductCategory =
-  | "hair-care"
-  | "soap"
-  | "skin-care"
-  | "lip-care";
+  | "hair"
+  | "skin"
+  | "lips"
+  | "body"; // optional (future-safe)
 
+/**
+ * =========================
+ * ✅ PRODUCT (AI READY)
+ * =========================
+ */
 export interface Product {
   id: string;
   name: string;
@@ -13,19 +23,45 @@ export interface Product {
   image: string;
   inStock: boolean;
   volume?: string;
+
+  /**
+   * 🔥 AI FIELDS (OPTIONAL)
+   */
+  concerns?: string[];
+  skin_type?: string[];
+  hair_type?: string[];
+  tags?: string[];
+  benefits?: string[];
+  ingredients?: string[];
+  usage?: string;
 }
 
+/**
+ * =========================
+ * 🛒 CART
+ * =========================
+ */
 export interface CartItem {
   product: Product;
   quantity: number;
 }
 
+/**
+ * =========================
+ * 📦 ORDER STATUS
+ * =========================
+ */
 export type OrderStatus =
   | "pending"
   | "confirmed"
   | "shipped"
   | "delivered";
 
+/**
+ * =========================
+ * 🚚 SHIPPING ADDRESS
+ * =========================
+ */
 export interface ShippingAddress {
   fullName: string;
   phone: string;
@@ -38,7 +74,7 @@ export interface ShippingAddress {
 
 /**
  * =========================
- * ✅ ORDER ITEM (DB aligned)
+ * 📦 ORDER ITEM
  * =========================
  */
 export interface OrderItem {
@@ -48,56 +84,59 @@ export interface OrderItem {
   price: number;
   quantity: number;
 
-  // 🔥 analytics
+  // analytics
   itemTotal: number;
 }
 
 /**
  * =========================
- * ✅ ORDER (ANALYTICS READY)
+ * 📊 ORDER (ANALYTICS READY)
  * =========================
  */
 export interface Order {
   id: string;
 
-  // 👤 user
+  // user
   userId: string;
   customerName: string;
   email: string;
   phone: string;
 
-  // 📦 address
+  // address
   address: string;
 
-  // 🧾 order data
+  // order data
   items: OrderItem[];
-  totalAmount: number; // 🔥 renamed from total
+  totalAmount: number;
   status: OrderStatus;
 
-  // 📝 optional
+  // optional
   notes?: string;
 
-  // 📅 timestamps (Supabase returns string)
+  // timestamps
   createdAt: string;
   updatedAt?: string;
 
-  // 🚚 optional
+  // delivery
   estimatedDelivery?: string;
 
   /**
-   * =========================
    * 🔥 ANALYTICS HELPERS
-   * =========================
    */
   itemCount: number;
   totalQuantity: number;
 
-  // 📊 chart helpers
+  // chart helpers
   day: number;
   month: number;
   year: number;
 }
 
+/**
+ * =========================
+ * 👤 USER
+ * =========================
+ */
 export type UserRole = "customer" | "admin";
 
 export interface User {

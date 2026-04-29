@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -26,12 +25,19 @@ import { Product } from "@/types";
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+// ✅ UPDATED FORM TYPE
 interface ProductForm {
   name: string;
   description: string;
   price: string;
   stock: string;
   image_url: string;
+
+  concerns: string;
+  skin_type: string;
+  hair_type: string;
+  benefits: string;
+  ingredients: string;
 }
 
 export function AdminProducts() {
@@ -40,9 +46,7 @@ export function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<ProductForm>({
@@ -51,9 +55,13 @@ export function AdminProducts() {
     price: "",
     stock: "1",
     image_url: "",
-  });
 
-  const [imagePreview, setImagePreview] = useState<string>("");
+    concerns: "",
+    skin_type: "",
+    hair_type: "",
+    benefits: "",
+    ingredients: "",
+  });
 
   // ================= FETCH =================
   useEffect(() => {
@@ -61,33 +69,16 @@ export function AdminProducts() {
 
     const fetchProducts = async () => {
       try {
-        console.log("📡 Fetching products...");
-
         const res = await fetch("/api/admin/products");
-
-        console.log("📡 Status:", res.status);
-
-        const text = await res.text();
-
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          console.error("❌ Non JSON response:", text);
-          toast.error("API not returning JSON");
-          return;
-        }
-
-        console.log("✅ Products API:", data);
+        const data = await res.json();
 
         if (!res.ok) {
-          toast.error(data.error || "Failed to load products");
+          toast.error(data.error);
           return;
         }
 
         setProducts(data.products || []);
-      } catch (err) {
-        console.error("❌ Fetch error:", err);
+      } catch {
         toast.error("Failed to load products");
       } finally {
         setLoading(false);
@@ -97,75 +88,30 @@ export function AdminProducts() {
     fetchProducts();
   }, [isAdmin]);
 
-  // ================= FORM =================
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      stock: "1",
-      image_url: "",
-    });
-    setImagePreview("");
-    setSelectedFile(null);
-  };
+  // ================= HELPERS =================
+  const parseArray = (value: string) =>
+    value
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
 
   const handleInputChange = (e: any) => {
     const { name, value } = e.target;
-    console.log("✏️ Input change:", name, value);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileSelect = (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    console.log("📁 File selected:", file.name);
-
     setSelectedFile(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  // ================= VALIDATION =================
-  const validateForm = () => {
-    console.log("🔍 Validating form:", formData);
-
-    if (!formData.name.trim()) {
-      toast.error("Name required");
-      return false;
-    }
-
-    if (!formData.description.trim()) {
-      toast.error("Description required");
-      return false;
-    }
-
-    if (!formData.price || isNaN(Number(formData.price))) {
-      toast.error("Valid price required");
-      return false;
-    }
-
-    if (Number(formData.price) <= 0) {
-      toast.error("Price must be greater than 0");
-      return false;
-    }
-
-    if (!selectedFile && !formData.image_url) {
-      toast.error("Image required");
-      return false;
-    }
-
-    return true;
   };
 
   // ================= SAVE =================
   const handleSaveProduct = async () => {
-    console.log("🚀 Save button clicked");
-
-    if (!validateForm()) return;
+    if (!formData.name || !formData.price) {
+      toast.error("Name & price required");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -173,28 +119,13 @@ export function AdminProducts() {
       let imageUrl = formData.image_url;
 
       if (selectedFile) {
-        console.log("📤 Uploading image...");
-        setIsUploading(true);
-
         const uploaded = await uploadImage(selectedFile);
-
-        setIsUploading(false);
-
-        console.log("📤 Upload result:", uploaded);
-
         if (!uploaded) {
           toast.error("Image upload failed");
           return;
         }
-
         imageUrl = uploaded;
       }
-
-      const url = editingProduct
-        ? `/api/admin/products/${editingProduct.id}`
-        : "/api/admin/products";
-
-      const method = editingProduct ? "PUT" : "POST";
 
       const payload = {
         name: formData.name,
@@ -202,52 +133,50 @@ export function AdminProducts() {
         price: parseFloat(formData.price),
         inStock: formData.stock === "1",
         image: imageUrl,
-        category: "skin-care",
+        category: "skin-care", // you can improve later with dropdown
+
+        // ✅ AI FIELDS
+        concerns: parseArray(formData.concerns),
+        skin_type: parseArray(formData.skin_type),
+        hair_type: parseArray(formData.hair_type),
+        benefits: parseArray(formData.benefits),
+        ingredients: parseArray(formData.ingredients),
       };
 
-      console.log("📦 Sending payload:", payload);
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
-      console.log("📡 Response status:", res.status);
-
-      const text = await res.text();
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.error("❌ HTML response:", text);
-        toast.error("Server returned HTML");
-        return;
-      }
-
-      console.log("✅ API response:", data);
+      const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || "Failed");
+        toast.error(data.error);
         return;
       }
 
-      if (editingProduct) {
-        setProducts((prev) =>
-          prev.map((p) => (p.id === editingProduct.id ? data.product : p))
-        );
-        toast.success("Updated");
-      } else {
-        setProducts((prev) => [...prev, data.product]);
-        toast.success("Product added");
-      }
+      setProducts((prev) => [...prev, data.product]);
+      toast.success("Product added successfully");
 
       setIsAddDialogOpen(false);
-      resetForm();
-    } catch (err) {
-      console.error("❌ Save error:", err);
-      toast.error("Something went wrong");
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        stock: "1",
+        image_url: "",
+        concerns: "",
+        skin_type: "",
+        hair_type: "",
+        benefits: "",
+        ingredients: "",
+      });
+      setSelectedFile(null);
+    } catch {
+      toast.error("Error saving product");
     } finally {
       setSubmitting(false);
     }
@@ -255,28 +184,19 @@ export function AdminProducts() {
 
   // ================= DELETE =================
   const handleDeleteProduct = async (id: string) => {
-    console.log("🗑 Deleting:", id);
+    const res = await fetch(`/api/admin/products/${id}`, {
+      method: "DELETE",
+    });
 
-    try {
-      const res = await fetch(`/api/admin/products/${id}`, {
-        method: "DELETE",
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      console.log("🗑 Delete response:", data);
-
-      if (!res.ok) {
-        toast.error(data.error);
-        return;
-      }
-
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Deleted");
-    } catch (err) {
-      console.error(err);
-      toast.error("Delete failed");
+    if (!res.ok) {
+      toast.error(data.error);
+      return;
     }
+
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    toast.success("Deleted");
   };
 
   return (
@@ -323,24 +243,28 @@ export function AdminProducts() {
         )}
       </CardContent>
 
+      {/* ================= DIALOG ================= */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Product</DialogTitle>
-            <DialogDescription>
-              Fill product details and save
-            </DialogDescription>
+            <DialogTitle>Add Product (AI Optimized)</DialogTitle>
           </DialogHeader>
 
           <Input name="name" placeholder="Name" onChange={handleInputChange} />
           <Input name="description" placeholder="Description" onChange={handleInputChange} />
           <Input name="price" placeholder="Price" onChange={handleInputChange} />
           <Input name="image_url" placeholder="Image URL" onChange={handleInputChange} />
-
           <Input type="file" onChange={handleFileSelect} />
 
+          {/* ✅ AI FIELDS */}
+          <Input name="concerns" placeholder="Concerns (comma separated)" onChange={handleInputChange} />
+          <Input name="skin_type" placeholder="Skin Type (oily, dry...)" onChange={handleInputChange} />
+          <Input name="hair_type" placeholder="Hair Type" onChange={handleInputChange} />
+          <Input name="benefits" placeholder="Benefits" onChange={handleInputChange} />
+          <Input name="ingredients" placeholder="Ingredients" onChange={handleInputChange} />
+
           <Button onClick={handleSaveProduct} disabled={submitting}>
-            {submitting ? "Saving..." : "Save"}
+            {submitting ? "Saving..." : "Save Product"}
           </Button>
         </DialogContent>
       </Dialog>

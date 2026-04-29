@@ -1,14 +1,82 @@
 import { NextResponse } from "next/server";
 import { products as staticProducts } from "@/lib/data/products";
 import { createClient } from "@/lib/supabase/server";
+
 export const dynamic = "force-dynamic";
+
+/**
+ * Normalize array fields safely
+ */
+function normalizeArray(value: any): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map((v) => String(v).toLowerCase());
+  return [];
+}
+
+/**
+ * Auto-enrich product using name + description
+ */
+function autoEnrich(product: any) {
+  const text = `${product.name} ${product.description}`.toLowerCase();
+
+  const autoTags = [
+    text.includes("hair") && "hair",
+    text.includes("skin") && "skin",
+    text.includes("lip") && "lips",
+    text.includes("dry") && "dry",
+    text.includes("dandruff") && "dandruff",
+    text.includes("acne") && "acne",
+  ].filter(Boolean);
+
+  return autoTags;
+}
+
+/**
+ * Normalize and enrich product
+ */
+function transformProduct(p: any) {
+  const tags = normalizeArray(p.tags);
+  const concerns = normalizeArray(p.concerns);
+  const skin_type = normalizeArray(p.skin_type);
+  const hair_type = normalizeArray(p.hair_type);
+  const benefits = normalizeArray(p.benefits);
+  const ingredients = normalizeArray(p.ingredients);
+
+  const enrichedTags = [
+    ...tags,
+    ...concerns,
+    ...skin_type,
+    ...hair_type,
+    ...benefits,
+    ...autoEnrich(p),
+  ];
+
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description || "",
+    price: Number(p.price) || 0,
+    category: (p.category || "general").toLowerCase(),
+    image: p.image_url || "/placeholder.png",
+    inStock: p.in_stock ?? true,
+    volume: p.volume,
+
+    // 🔥 AI FIELDS
+    tags: [...new Set(enrichedTags)],
+    concerns,
+    skin_type,
+    hair_type,
+    benefits,
+    ingredients,
+
+    created_at: p.created_at,
+  };
+}
 
 export async function GET() {
   try {
-    // Initialize Supabase server client
     const supabase = createClient();
 
-    // Fetch all products from Supabase
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -18,53 +86,39 @@ export async function GET() {
       console.error("❌ Supabase fetch error:", error);
     }
 
-    // Transform and normalize DB products to match frontend structure
-    const dbProducts = (data || []).map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      price: p.price,
-      category: p.category,
-      image: p.image_url,
-      inStock: p.in_stock,
-      volume: p.volume,
-      // Normalize tags field - derive from category
-      tags: p.tags || deriveTagsFromCategory(p.category),
-    }));
+    // ✅ Transform DB products
+    const dbProducts = (data || []).map(transformProduct);
 
-    // Normalize static products to include tags field
-    const normalizedStaticProducts = staticProducts.map((product) => ({
-      ...product,
-      tags: deriveTagsFromCategory(product.category),
-    }));
+    // ✅ Normalize static products same way
+    const normalizedStaticProducts = staticProducts.map((p: any) =>
+      transformProduct({
+        ...p,
+        image_url: p.image,
+        in_stock: p.inStock,
+      })
+    );
 
-    // Merge DB products with static products
+    // ✅ Merge both
     const allProducts = [...dbProducts, ...normalizedStaticProducts];
 
-    return NextResponse.json({ products: allProducts });
+    // ✅ Remove duplicates (by name)
+    const uniqueProducts = Array.from(
+      new Map(allProducts.map((p) => [p.name.toLowerCase(), p])).values()
+    );
+
+    return NextResponse.json({ products: uniqueProducts });
   } catch (err) {
     console.error("❌ AI PRODUCTS API ERROR:", err);
 
-    // Fallback: return static products only with normalized fields
-    const fallbackProducts = staticProducts.map((product) => ({
-      ...product,
-      tags: deriveTagsFromCategory(product.category),
-    }));
+    // fallback
+    const fallbackProducts = staticProducts.map((p: any) =>
+      transformProduct({
+        ...p,
+        image_url: p.image,
+        in_stock: p.inStock,
+      })
+    );
 
     return NextResponse.json({ products: fallbackProducts });
   }
-}
-
-/**
- * Derive tags from product category
- */
-function deriveTagsFromCategory(category: string): string[] {
-  const categoryTags: Record<string, string[]> = {
-    "hair-care": ["hair", "scalp", "growth"],
-    "skin-care": ["skin", "face", "body"],
-    "soap": ["body", "skin", "cleansing"],
-    "lip-care": ["lips", "moisture", "care"],
-  };
-
-  return categoryTags[category] || ["general"];
 }

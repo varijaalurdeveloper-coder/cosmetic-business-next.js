@@ -7,18 +7,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ HELPER: always return JSON
-const jsonError = (message: string, status = 500) => {
-  return NextResponse.json({ success: false, error: message }, { status });
-};
+// ✅ helper
+const jsonError = (message: string, status = 500) =>
+  NextResponse.json({ success: false, error: message }, { status });
 
-// ✅ GET PRODUCTS
+// ================= GET =================
 export async function GET() {
   try {
     const adminCheck = await verifyAdminSession();
 
     if (!adminCheck?.isAdmin) {
-      console.log("❌ Not admin");
       return jsonError("Unauthorized", 401);
     }
 
@@ -28,10 +26,11 @@ export async function GET() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("❌ Supabase fetch error:", error);
+      console.error(error);
       return jsonError("Failed to fetch products");
     }
 
+    // ✅ RETURN FULL AI DATA
     const products = (data || []).map((p: any) => ({
       id: p.id,
       name: p.name,
@@ -41,34 +40,33 @@ export async function GET() {
       image: p.image_url,
       inStock: p.in_stock,
       volume: p.volume,
+
+      // 🔥 AI FIELDS (VERY IMPORTANT)
+      concerns: p.concerns || [],
+      tags: p.tags || [],
+      benefits: p.benefits || [],
+      skin_type: p.skin_type || [],
+      hair_type: p.hair_type || [],
+      ingredients: p.ingredients || [],
     }));
 
     return NextResponse.json({ success: true, products });
   } catch (err) {
-    console.error("❌ GET ERROR:", err);
+    console.error(err);
     return jsonError("Internal server error");
   }
 }
 
-// ✅ CREATE PRODUCT
+// ================= POST =================
 export async function POST(req: Request) {
   try {
     const adminCheck = await verifyAdminSession();
 
     if (!adminCheck?.isAdmin) {
-      console.log("❌ Not admin (POST)");
       return jsonError("Unauthorized", 401);
     }
 
-    let body;
-
-    try {
-      body = await req.json();
-    } catch {
-      return jsonError("Invalid JSON body", 400);
-    }
-
-    console.log("📦 Incoming product:", body);
+    const body = await req.json();
 
     const {
       name,
@@ -78,15 +76,41 @@ export async function POST(req: Request) {
       category,
       inStock,
       volume,
+
+      // ✅ FROM FRONTEND (IMPORTANT)
+      concerns = [],
+      tags = [],
+      benefits = [],
+      skin_type = [],
+      hair_type = [],
+      ingredients = [],
     } = body;
 
-    // ✅ STRONG VALIDATION
+    // ✅ VALIDATION
     if (!name?.trim()) return jsonError("Name is required", 400);
     if (!description?.trim()) return jsonError("Description is required", 400);
     if (price === undefined || isNaN(price))
       return jsonError("Valid price required", 400);
     if (!image?.trim()) return jsonError("Image is required", 400);
     if (!category?.trim()) return jsonError("Category is required", 400);
+
+    // ✅ KEEP CATEGORY CONSISTENT (NO CONVERSION)
+    const normalizedCategory = category;
+
+    // ✅ OPTIONAL: fallback auto-tagging (only if admin didn't provide)
+    let autoConcerns: string[] = [];
+    let autoTags: string[] = [];
+
+    if (concerns.length === 0) {
+      const text = `${name} ${description}`.toLowerCase();
+
+      if (text.includes("dry")) autoConcerns.push("dry");
+      if (text.includes("acne")) autoConcerns.push("acne");
+      if (text.includes("dandruff")) autoConcerns.push("dandruff");
+      if (text.includes("hair fall")) autoConcerns.push("hair fall");
+
+      if (text.includes("glow")) autoTags.push("glow");
+    }
 
     const { data, error } = await supabase
       .from("products")
@@ -95,41 +119,36 @@ export async function POST(req: Request) {
         description,
         price,
         image_url: image,
-        category,
+        category: normalizedCategory,
         in_stock: inStock ?? true,
         volume: volume ?? null,
+
+        // ✅ USE ADMIN DATA FIRST
+        concerns: concerns.length ? concerns : autoConcerns,
+        tags: tags.length ? tags : autoTags,
+        benefits,
+        skin_type,
+        hair_type,
+        ingredients,
       })
       .select()
       .single();
 
     if (error) {
-      console.error("❌ Supabase insert error:", error);
-      return jsonError(error.message || "Database error");
+      console.error(error);
+      return jsonError(error.message);
     }
-
-    const product = {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      category: data.category,
-      image: data.image_url,
-      inStock: data.in_stock,
-      volume: data.volume,
-    };
-
-    console.log("✅ Product created:", product);
 
     return NextResponse.json(
       {
         success: true,
-        message: "Product created",
-        product,
+        message: "Product created successfully",
+        product: data,
       },
       { status: 201 }
     );
   } catch (err) {
-    console.error("❌ POST ERROR:", err);
+    console.error(err);
     return jsonError("Internal server error");
   }
 }
