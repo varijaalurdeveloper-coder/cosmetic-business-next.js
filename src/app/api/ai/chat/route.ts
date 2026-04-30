@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { products as staticProducts } from "@/lib/data/products";
 
 interface Product {
   id: string;
@@ -19,52 +17,37 @@ interface Product {
   benefits?: string[];
 }
 
-// ✅ MULTI-INTENT DETECTION (FIXED)
+// ✅ INTENT DETECTION
 function detectIntent(message: string) {
   const text = message.toLowerCase();
 
   const categories = new Set<"hair" | "skin" | "lips">();
-  const concerns: string[] = [];
+  const concerns = new Set<string>();
 
-  // 🎯 CATEGORY DETECTION
-  if (text.includes("hair")) categories.add("hair");
-  if (text.includes("lip")) categories.add("lips");
-  if (text.includes("skin") || text.includes("face")) categories.add("skin");
+  if (/(hair|scalp)/.test(text)) categories.add("hair");
+  if (/(lip)/.test(text)) categories.add("lips");
+  if (/(skin|face)/.test(text)) categories.add("skin");
 
-  // 🎯 CONCERN DETECTION
-  if (text.includes("dry hair")) {
-    categories.add("hair");
-    concerns.push("dry hair");
-  }
+  const concernMap: Record<string, string[]> = {
+    "dry hair": ["dry hair", "frizzy hair", "rough hair"],
+    "oily skin": ["oily skin", "greasy skin"],
+    "dry skin": ["dry skin", "flaky skin"],
+    "dandruff": ["dandruff", "flakes"],
+    "acne": ["acne", "pimple", "breakout"],
+    "hair fall": ["hair fall", "hair loss", "thinning hair"],
+    "pigmentation": ["dark spots", "pigmentation", "uneven skin"],
+    "tan": ["tan", "sun tan"],
+  };
 
-  if (text.includes("oily skin") || text.includes("oily face")) {
-    categories.add("skin");
-    concerns.push("oily skin");
-  }
-
-  if (text.includes("dry skin")) {
-    categories.add("skin");
-    concerns.push("dry skin");
-  }
-
-  if (text.includes("dandruff")) {
-    categories.add("hair");
-    concerns.push("dandruff");
-  }
-
-  if (text.includes("acne") || text.includes("pimple")) {
-    categories.add("skin");
-    concerns.push("acne");
-  }
-
-  if (text.includes("hair fall")) {
-    categories.add("hair");
-    concerns.push("hair fall");
+  for (const key in concernMap) {
+    if (concernMap[key].some(keyword => text.includes(keyword))) {
+      concerns.add(key);
+    }
   }
 
   return {
     categories: categories.size ? Array.from(categories) : ["general"],
-    concerns,
+    concerns: Array.from(concerns),
   };
 }
 
@@ -81,92 +64,92 @@ function normalizeCategory(category: string) {
   return "general";
 }
 
-// ✅ FETCH PRODUCTS
+// ✅ FETCH FROM AI PRODUCTS API (MAIN FIX)
 async function fetchAllProducts(): Promise<Product[]> {
-  const supabase = createClient();
+  try {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` ||
+      "http://localhost:3000";
 
-  const { data } = await supabase.from("products").select("*");
+    const res = await fetch(`${baseUrl}/api/ai/products`, {
+      cache: "no-store",
+    });
 
-  const dbProducts: Product[] = (data || []).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description || "",
-    price: Number(p.price),
-    category: normalizeCategory(p.category),
-    image: p.image_url,
-    inStock: p.in_stock,
+    if (!res.ok) throw new Error("Failed to fetch AI products");
 
-    tags: p.tags || [],
-    concerns: p.concerns || [],
-    skin_type: p.skin_type || [],
-    hair_type: p.hair_type || [],
-    benefits: p.benefits || [],
-  }));
+    const data = await res.json();
 
-  const normalizedStatic = staticProducts.map((p) => ({
-    ...p,
-    category: normalizeCategory(p.category),
-  }));
+    return data.products || [];
 
-  return [...dbProducts, ...normalizedStatic];
+  } catch (error) {
+    console.error("⚠️ Falling back to empty product list:", error);
+    return [];
+  }
 }
 
-// ✅ MULTI-CONCERN FILTERING (FIXED)
+// ✅ FILTERING (UNCHANGED)
 function filterProducts(
   products: Product[],
   categories: string[],
   concerns: string[]
 ) {
-  return products
+  const results = products
     .map((product) => {
       let score = 0;
-
       const pCategory = normalizeCategory(product.category);
 
-      // ✅ CATEGORY MATCH
       if (!categories.includes("general") && !categories.includes(pCategory)) {
         return null;
       }
 
-      score += 10;
+      score += 5;
 
-      // ✅ MULTIPLE CONCERNS
       concerns.forEach((c) => {
         const lc = c.toLowerCase();
 
-        if (product.concerns?.some(x => x.toLowerCase().includes(lc))) score += 20;
-        if (product.tags?.some(x => x.toLowerCase().includes(lc))) score += 10;
-        if (product.benefits?.some(x => x.toLowerCase().includes(lc))) score += 10;
-        if (product.hair_type?.some(x => x.toLowerCase().includes(lc))) score += 10;
-        if (product.skin_type?.some(x => x.toLowerCase().includes(lc))) score += 10;
+        if (product.concerns?.some(x => x.toLowerCase().includes(lc))) score += 30;
+        if (product.benefits?.some(x => x.toLowerCase().includes(lc))) score += 20;
+        if (product.tags?.some(x => x.toLowerCase().includes(lc))) score += 15;
 
         const text = `${product.name} ${product.description}`.toLowerCase();
-        if (text.includes(lc)) score += 5;
+        if (text.includes(lc)) score += 10;
       });
 
       return { product, score };
     })
     .filter(Boolean)
-    .filter((p: any) => p.product.inStock && p.score >= 10)
-    .sort((a: any, b: any) => b.score - a.score)
-    .slice(0, 6)
-    .map((p: any) => p.product);
+    .filter((p: any) => p.product.inStock)
+    .sort((a: any, b: any) => b.score - a.score);
+
+  const strongMatches = results.filter((p: any) => p.score >= 25);
+
+  const finalResults = strongMatches.length
+    ? strongMatches
+    : results.slice(0, 6);
+
+  return finalResults.slice(0, 6).map((p: any) => p.product);
 }
 
-// ✅ BETTER RESPONSE (MULTI-CONCERN)
+// ✅ RESPONSE
 function generateReply(concerns: string[], products: Product[]) {
-  let advice = "Here are some products suitable for your needs.";
+  let advice = "";
 
   if (concerns.includes("dry hair")) {
-    advice += "\n💇 Dry hair needs deep hydration. Use oils and conditioners.";
+    advice += "💇 Dry hair needs deep hydration and nourishing oils.\n";
   }
-
   if (concerns.includes("oily skin")) {
-    advice += "\n🧴 Oily skin needs oil-control and gentle cleansing.";
+    advice += "🧴 Oily skin needs gentle cleansing and oil control.\n";
+  }
+  if (concerns.includes("acne")) {
+    advice += "🌿 Acne-prone skin benefits from antibacterial and soothing ingredients.\n";
+  }
+  if (concerns.includes("hair fall")) {
+    advice += "🌱 Strengthening roots and scalp care is important for hair fall.\n";
   }
 
-  if (concerns.includes("dandruff")) {
-    advice += "\n❄️ Use anti-dandruff shampoos regularly.";
+  if (!advice) {
+    advice = "✨ Based on your request, here are some recommended products.";
   }
 
   return `
@@ -176,7 +159,7 @@ function generateReply(concerns: string[], products: Product[]) {
 
 ${products.map((p, i) => `${i + 1}. ${p.name} - ₹${p.price}`).join("\n")}
 
-Would you like to add any to cart? 😊
+👉 Tap “Add to Cart” to purchase or ask me for more suggestions 😊
 `;
 }
 
@@ -199,6 +182,8 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (err) {
+    console.error("AI CHAT ERROR:", err);
+
     return NextResponse.json({
       reply: "Something went wrong. Please try again.",
       products: [],

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/providers/CartProvider";
 import { useRouter } from "next/navigation";
-import { Send, X, MessageCircle, ShoppingCart, MessageSquare, Check } from "lucide-react";
+import { Send, X, MessageCircle, Check } from "lucide-react";
 import Image from "next/image";
 
 interface Product {
@@ -16,7 +16,7 @@ interface Product {
   image: string;
   inStock: boolean;
   volume?: string;
-  tags: string[];
+  tags?: string[];
 }
 
 interface ChatMessage {
@@ -28,10 +28,17 @@ interface ChatMessage {
 
 export default function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "welcome",
+      role: "bot",
+      content: "Hi 👋 Tell me your skin or hair concern and I’ll suggest the best products for you.",
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { addToCart } = useCart();
@@ -47,7 +54,6 @@ export default function AIChatbot() {
   // ✅ SEND MESSAGE
   const handleSend = async (customMessage?: string) => {
     const finalMessage = (customMessage ?? input).trim();
-
     if (!finalMessage || isLoading) return;
 
     const userMessage: ChatMessage = {
@@ -67,19 +73,19 @@ export default function AIChatbot() {
         body: JSON.stringify({ message: finalMessage }),
       });
 
+      if (!response.ok) throw new Error("API error");
+
       const data = await response.json();
 
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        content:
-          data.products?.length > 0
-            ? data.reply
-            : "I couldn't find exact matches, but here are some general recommendations 😊",
-        products: data.products || [],
+        content: data?.reply || "Here are some recommendations 😊",
+        products: Array.isArray(data?.products) ? data.products : [],
       };
 
       setMessages((prev) => [...prev, botMessage]);
+
     } catch (error) {
       console.error("Chat error:", error);
 
@@ -88,7 +94,7 @@ export default function AIChatbot() {
         {
           id: (Date.now() + 1).toString(),
           role: "bot",
-          content: "I’m having trouble right now. Please try again!",
+          content: "⚠️ I’m having trouble right now. Please try again!",
         },
       ]);
     } finally {
@@ -145,54 +151,23 @@ export default function AIChatbot() {
           className="h-14 w-14 rounded-full bg-emerald-600 hover:bg-emerald-700 shadow-lg transition-all hover:scale-105"
           size="icon"
         >
-          {isOpen ? (
-            <X className="h-6 w-6 text-white" />
-          ) : (
-            <MessageCircle className="h-6 w-6 text-white" />
-          )}
+          {isOpen ? <X className="h-6 w-6 text-white" /> : <MessageCircle className="h-6 w-6 text-white" />}
         </Button>
       </div>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="absolute bottom-20 right-0 w-[380px] max-w-[calc(100vw-3rem)] h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
-          
+        <div className="absolute bottom-20 right-0 w-[380px] max-w-[calc(100vw-3rem)] h-[600px] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
+
           {/* Header */}
-          <div className="bg-emerald-600 p-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-semibold">Beauty Advisor</h3>
-              <p className="text-white/80 text-xs">AI-powered skincare help</p>
-            </div>
+          <div className="bg-emerald-600 p-4">
+            <h3 className="text-white font-semibold">Beauty Advisor</h3>
+            <p className="text-white/80 text-xs">AI-powered skincare help</p>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            
-            {/* Empty State */}
-            {messages.length === 0 && (
-              <div className="text-center py-8">
-                <h4 className="font-medium text-gray-800 mb-2">Tell me your concern 👇</h4>
 
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {[
-                    "I have oily skin",
-                    "Dry hair problem",
-                    "Acne and pimples",
-                    "Hair fall issue",
-                  ].map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => handleSend(tag)} // ✅ AUTO SEND FIX
-                      className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs text-gray-600 hover:bg-emerald-50 hover:border-emerald-300"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Chat */}
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -210,15 +185,15 @@ export default function AIChatbot() {
                   {/* Products */}
                   {Array.isArray(message.products) && message.products.length > 0 && (
                     <div className="mt-3 space-y-2">
-                      {message.products!.map((product) => (
+                      {message.products.map((product) => (
                         <div key={product.id} className="flex gap-3 bg-gray-50 p-2 rounded-lg">
                           <Image
-                             src={product.image}
-                              alt={product.name}
-                              width={56}
-                              height={56}
-                              className="object-cover rounded"
-                              />
+                            src={product.image}
+                            alt={product.name}
+                            width={56}
+                            height={56}
+                            className="object-cover rounded"
+                          />
 
                           <div className="flex-1">
                             <p className="text-sm font-medium">{product.name}</p>
@@ -231,8 +206,9 @@ export default function AIChatbot() {
                                 </button>
                               ) : (
                                 <button
+                                  disabled={isLoading}
                                   onClick={() => handleAddToCart(product)}
-                                  className="flex-1 bg-emerald-600 text-white text-xs py-1 rounded"
+                                  className="flex-1 bg-emerald-600 text-white text-xs py-1 rounded disabled:opacity-50"
                                 >
                                   Add
                                 </button>
@@ -254,7 +230,9 @@ export default function AIChatbot() {
               </div>
             ))}
 
-            {isLoading && <p className="text-sm text-gray-400">Thinking...</p>}
+            {isLoading && (
+              <p className="text-sm text-gray-400 animate-pulse">Thinking...</p>
+            )}
 
             <div ref={messagesEndRef} />
           </div>
@@ -266,9 +244,10 @@ export default function AIChatbot() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Describe your concern..."
-              className="flex-1 px-3 py-2 border rounded-full text-sm"
+              disabled={isLoading}
+              className="flex-1 px-3 py-2 border rounded-full text-sm disabled:opacity-50"
             />
-            <Button onClick={() => handleSend()} size="icon">
+            <Button onClick={() => handleSend()} size="icon" disabled={isLoading}>
               <Send className="w-4 h-4" />
             </Button>
           </div>

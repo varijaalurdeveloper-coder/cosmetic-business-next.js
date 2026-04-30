@@ -5,16 +5,18 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Normalize array fields safely
+ * Normalize array safely
  */
 function normalizeArray(value: any): string[] {
   if (!value) return [];
-  if (Array.isArray(value)) return value.map((v) => String(v).toLowerCase());
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v).toLowerCase().trim());
+  }
   return [];
 }
 
 /**
- * Normalize category (IMPORTANT FIX)
+ * Normalize category
  */
 function normalizeCategory(category: string) {
   if (!category) return "general";
@@ -29,7 +31,7 @@ function normalizeCategory(category: string) {
 }
 
 /**
- * 🔥 SMART AUTO ENRICH (UPGRADED)
+ * 🔥 STRONG AUTO ENRICH (UPGRADED)
  */
 function autoEnrich(product: any) {
   const text = `${product.name} ${product.description}`.toLowerCase();
@@ -37,26 +39,30 @@ function autoEnrich(product: any) {
   const tags: string[] = [];
 
   // CATEGORY
-  if (text.includes("hair")) tags.push("hair");
-  if (text.includes("skin") || text.includes("face")) tags.push("skin");
-  if (text.includes("lip")) tags.push("lips");
+  if (/(hair|scalp)/.test(text)) tags.push("hair");
+  if (/(skin|face)/.test(text)) tags.push("skin");
+  if (/(lip)/.test(text)) tags.push("lips");
 
-  // HAIR CONDITIONS
-  if (text.includes("dry")) tags.push("dry hair");
-  if (text.includes("frizzy")) tags.push("dry hair");
-  if (text.includes("dandruff")) tags.push("dandruff");
-  if (text.includes("hair fall")) tags.push("hair fall");
+  // HAIR
+  if (/(dry|frizzy|rough)/.test(text)) tags.push("dry hair");
+  if (/(dandruff|flakes)/.test(text)) tags.push("dandruff");
+  if (/(hair fall|hair loss|thinning)/.test(text)) tags.push("hair fall");
+  if (/(split ends)/.test(text)) tags.push("split ends");
 
-  // SKIN CONDITIONS
-  if (text.includes("oily")) tags.push("oily skin");
-  if (text.includes("acne") || text.includes("pimple")) tags.push("acne");
-  if (text.includes("dry skin")) tags.push("dry skin");
+  // SKIN
+  if (/(oily|greasy)/.test(text)) tags.push("oily skin");
+  if (/(dry skin|flaky)/.test(text)) tags.push("dry skin");
+  if (/(acne|pimple|breakout)/.test(text)) tags.push("acne");
+  if (/(pigmentation|dark spots)/.test(text)) tags.push("pigmentation");
+  if (/(tan|sun tan)/.test(text)) tags.push("tan");
+  if (/(sensitive)/.test(text)) tags.push("sensitive skin");
+  if (/(dull|glow)/.test(text)) tags.push("dull skin");
 
   return tags;
 }
 
 /**
- * Normalize and enrich product
+ * Transform product
  */
 function transformProduct(p: any) {
   const tags = normalizeArray(p.tags);
@@ -85,7 +91,7 @@ function transformProduct(p: any) {
     inStock: p.in_stock ?? true,
     volume: p.volume,
 
-    // 🔥 AI FIELDS (IMPORTANT)
+    // ✅ AI POWER FIELDS
     tags: [...new Set(enrichedTags)],
     concerns,
     skin_type,
@@ -122,11 +128,13 @@ export async function GET() {
 
     const allProducts = [...dbProducts, ...normalizedStaticProducts];
 
+    // ✅ REMOVE DUPLICATES
     const uniqueProducts = Array.from(
       new Map(allProducts.map((p) => [p.name.toLowerCase(), p])).values()
     );
 
     return NextResponse.json({ products: uniqueProducts });
+
   } catch (err) {
     console.error("❌ AI PRODUCTS API ERROR:", err);
 
