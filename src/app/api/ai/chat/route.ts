@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { products as staticProducts } from "@/lib/data/products";
 
 interface Product {
   id: string;
@@ -40,7 +42,7 @@ function detectIntent(message: string) {
   };
 
   for (const key in concernMap) {
-    if (concernMap[key].some(keyword => text.includes(keyword))) {
+    if (concernMap[key].some((keyword) => text.includes(keyword))) {
       concerns.add(key);
     }
   }
@@ -58,37 +60,83 @@ function normalizeCategory(category: string) {
   const c = category.toLowerCase();
 
   if (c.includes("hair")) return "hair";
-  if (c.includes("skin") || c.includes("face") || c.includes("soap")) return "skin";
+  if (c.includes("skin") || c.includes("face") || c.includes("soap"))
+    return "skin";
   if (c.includes("lip")) return "lips";
 
   return "general";
 }
 
-// ✅ FETCH FROM AI PRODUCTS API (MAIN FIX)
+// ✅ 🔥 DIRECT PRODUCT FETCH (NO INTERNAL API CALL)
 async function fetchAllProducts(): Promise<Product[]> {
   try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` ||
-      "http://localhost:3000";
+    const supabase = createClient();
 
-    const res = await fetch(`${baseUrl}/api/ai/products`, {
-      cache: "no-store",
-    });
+    const { data, error } = await supabase.from("products").select("*");
 
-    if (!res.ok) throw new Error("Failed to fetch AI products");
+    if (error) {
+      console.error("Supabase error:", error);
+    }
 
-    const data = await res.json();
+    const dbProducts: Product[] = (data || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price) || 0,
+      category: p.category || "general",
+      description: p.description || "",
+      image: p.image_url || "/placeholder.png",
+      inStock: p.in_stock ?? true,
+      volume: p.volume,
 
-    return data.products || [];
+      tags: p.tags || [],
+      concerns: p.concerns || [],
+      skin_type: p.skin_type || [],
+      hair_type: p.hair_type || [],
+      benefits: p.benefits || [],
+    }));
 
+    const staticMapped: Product[] = staticProducts.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      description: p.description,
+      image: p.image,
+      inStock: p.inStock,
+      volume: p.volume,
+
+      tags: p.tags || [],
+      concerns: p.concerns || [],
+      skin_type: p.skin_type || [],
+      hair_type: p.hair_type || [],
+      benefits: p.benefits || [],
+    }));
+
+    return [...dbProducts, ...staticMapped];
   } catch (error) {
-    console.error("⚠️ Falling back to empty product list:", error);
-    return [];
+    console.error("Product fetch failed:", error);
+
+    // fallback to static
+    return staticProducts.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      description: p.description,
+      image: p.image,
+      inStock: p.inStock,
+      volume: p.volume,
+
+      tags: p.tags || [],
+      concerns: p.concerns || [],
+      skin_type: p.skin_type || [],
+      hair_type: p.hair_type || [],
+      benefits: p.benefits || [],
+    }));
   }
 }
 
-// ✅ FILTERING (UNCHANGED)
+// ✅ FILTER PRODUCTS
 function filterProducts(
   products: Product[],
   categories: string[],
@@ -108,9 +156,12 @@ function filterProducts(
       concerns.forEach((c) => {
         const lc = c.toLowerCase();
 
-        if (product.concerns?.some(x => x.toLowerCase().includes(lc))) score += 30;
-        if (product.benefits?.some(x => x.toLowerCase().includes(lc))) score += 20;
-        if (product.tags?.some(x => x.toLowerCase().includes(lc))) score += 15;
+        if (product.concerns?.some((x) => x.toLowerCase().includes(lc)))
+          score += 30;
+        if (product.benefits?.some((x) => x.toLowerCase().includes(lc)))
+          score += 20;
+        if (product.tags?.some((x) => x.toLowerCase().includes(lc)))
+          score += 15;
 
         const text = `${product.name} ${product.description}`.toLowerCase();
         if (text.includes(lc)) score += 10;
@@ -131,7 +182,7 @@ function filterProducts(
   return finalResults.slice(0, 6).map((p: any) => p.product);
 }
 
-// ✅ RESPONSE
+// ✅ RESPONSE TEXT
 function generateReply(concerns: string[], products: Product[]) {
   let advice = "";
 
@@ -142,14 +193,14 @@ function generateReply(concerns: string[], products: Product[]) {
     advice += "🧴 Oily skin needs gentle cleansing and oil control.\n";
   }
   if (concerns.includes("acne")) {
-    advice += "🌿 Acne-prone skin benefits from antibacterial and soothing ingredients.\n";
+    advice += "🌿 Acne-prone skin benefits from antibacterial care.\n";
   }
   if (concerns.includes("hair fall")) {
-    advice += "🌱 Strengthening roots and scalp care is important for hair fall.\n";
+    advice += "🌱 Strengthening roots is important for hair fall.\n";
   }
 
   if (!advice) {
-    advice = "✨ Based on your request, here are some recommended products.";
+    advice = "✨ Here are some recommended products for you.";
   }
 
   return `
@@ -159,7 +210,7 @@ function generateReply(concerns: string[], products: Product[]) {
 
 ${products.map((p, i) => `${i + 1}. ${p.name} - ₹${p.price}`).join("\n")}
 
-👉 Tap “Add to Cart” to purchase or ask me for more suggestions 😊
+👉 Tap “Add to Cart” or contact us on WhatsApp 😊
 `;
 }
 
@@ -168,24 +219,27 @@ export async function POST(request: NextRequest) {
   try {
     const { message } = await request.json();
 
-    const products = await fetchAllProducts();
+    const allProducts = await fetchAllProducts();
 
     const { categories, concerns } = detectIntent(message);
 
-    const filtered = filterProducts(products, categories, concerns);
+    const filteredProducts = filterProducts(
+      allProducts,
+      categories,
+      concerns
+    );
 
-    const reply = generateReply(concerns, filtered);
+    const reply = generateReply(concerns, filteredProducts);
 
     return NextResponse.json({
-      reply,
-      products: filtered,
+      message: reply,
+      products: filteredProducts,
     });
-
   } catch (err) {
     console.error("AI CHAT ERROR:", err);
 
     return NextResponse.json({
-      reply: "Something went wrong. Please try again.",
+      message: "Something went wrong. Please try again.",
       products: [],
     });
   }
