@@ -6,12 +6,13 @@ import { useCart } from "@/providers/CartProvider";
 import { useRouter } from "next/navigation";
 import { Send, X, MessageCircle, Check } from "lucide-react";
 import Image from "next/image";
+import type { ProductCategory } from "@/types";
 
 interface Product {
   id: string;
   name: string;
   price: number;
-  category: string;
+  category: ProductCategory;
   description: string;
   image: string;
   inStock: boolean;
@@ -33,7 +34,7 @@ export default function AIChatbot() {
       id: "welcome",
       role: "bot",
       content:
-        "Hi 👋 Tell me your skin or hair concern and I’ll suggest the best products for you.",
+        "Hi 👋 Tell me your skin, hair or lip concern and I’ll suggest the best products for you.",
       products: [],
     },
   ]);
@@ -53,7 +54,17 @@ export default function AIChatbot() {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ SEND MESSAGE (FIXED)
+  // ✅ QUICK SUGGESTIONS (NEW)
+  const quickSuggestions = [
+    "I have acne",
+    "I have hair fall",
+    "I have dry skin",
+    "I have dandruff",
+    "I have dark spots",
+    "My lips are dry",
+  ];
+
+  // ✅ SEND MESSAGE
   const handleSend = async (customMessage?: string) => {
     const finalMessage = (customMessage ?? input).trim();
     if (!finalMessage || isLoading) return;
@@ -75,11 +86,8 @@ export default function AIChatbot() {
         body: JSON.stringify({ message: finalMessage }),
       });
 
-      if (!response.ok) throw new Error("API error");
-
       const data = await response.json();
 
-      // ✅ FIX: use correct key "message"
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
@@ -89,15 +97,12 @@ export default function AIChatbot() {
 
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
-      console.error("Chat error:", error);
-
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: "bot",
-          content: "⚠️ I’m having trouble right now. Please try again!",
-          products: [],
+          content: "⚠️ Something went wrong. Please try again!",
         },
       ]);
     } finally {
@@ -107,7 +112,7 @@ export default function AIChatbot() {
 
   // ✅ ENTER KEY
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSend();
     }
@@ -116,16 +121,15 @@ export default function AIChatbot() {
   // ✅ ADD TO CART
   const handleAddToCart = (product: Product) => {
     addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      category: product.category as any,
-      description: product.description,
-      image: product.image,
-      inStock: product.inStock,
-      volume: product.volume,
-    });
-
+  id: product.id,
+  name: product.name,
+  price: product.price,
+  category: product.category as any, // 👈 safe cast here
+  description: product.description,
+  image: product.image,
+  inStock: product.inStock,
+  volume: product.volume,
+});
     setAddedProductId(product.id);
 
     setTimeout(() => {
@@ -151,19 +155,17 @@ export default function AIChatbot() {
   return (
     <>
       {/* Floating Button */}
-      <div>
-        <Button
-          onClick={() => setIsOpen(!isOpen)}
-          className="h-14 w-14 rounded-full bg-emerald-600 hover:bg-emerald-700 shadow-lg"
-          size="icon"
-        >
-          {isOpen ? (
-            <X className="h-6 w-6 text-white" />
-          ) : (
-            <MessageCircle className="h-6 w-6 text-white" />
-          )}
-        </Button>
-      </div>
+      <Button
+        onClick={() => setIsOpen(!isOpen)}
+        className="h-14 w-14 rounded-full bg-emerald-600 hover:bg-emerald-700 shadow-lg"
+        size="icon"
+      >
+        {isOpen ? (
+          <X className="h-6 w-6 text-white" />
+        ) : (
+          <MessageCircle className="h-6 w-6 text-white" />
+        )}
+      </Button>
 
       {/* Chat Window */}
       {isOpen && (
@@ -172,12 +174,27 @@ export default function AIChatbot() {
           <div className="bg-emerald-600 p-4">
             <h3 className="text-white font-semibold">Beauty Advisor</h3>
             <p className="text-white/80 text-xs">
-              AI-powered skincare help
+              AI-powered personalized recommendations
             </p>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {/* ✅ QUICK SUGGESTIONS UI */}
+            {messages.length === 1 && (
+              <div className="flex flex-wrap gap-2">
+                {quickSuggestions.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleSend(q)}
+                    className="text-xs bg-white border px-3 py-1 rounded-full hover:bg-emerald-50"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -198,7 +215,7 @@ export default function AIChatbot() {
                     {message.content}
                   </p>
 
-                  {/* ✅ PRODUCTS (FIXED SAFE CHECK) */}
+                  {/* PRODUCTS */}
                   {message.products && message.products.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {message.products.map((product) => (
@@ -258,7 +275,7 @@ export default function AIChatbot() {
 
             {isLoading && (
               <p className="text-sm text-gray-400 animate-pulse">
-                Thinking...
+                🤖 Finding best products for you...
               </p>
             )}
 

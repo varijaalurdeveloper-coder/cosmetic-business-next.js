@@ -17,7 +17,14 @@ interface Product {
   skin_type?: string[];
   hair_type?: string[];
   benefits?: string[];
+
+  priority?: number; // ✅ NEW
 }
+
+// 🔐 GEMINI CONFIG
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent";
 
 // ✅ INTENT DETECTION
 function detectIntent(message: string) {
@@ -34,11 +41,13 @@ function detectIntent(message: string) {
     "dry hair": ["dry hair", "frizzy hair", "rough hair"],
     "oily skin": ["oily skin", "greasy skin"],
     "dry skin": ["dry skin", "flaky skin"],
-    "dandruff": ["dandruff", "flakes"],
-    "acne": ["acne", "pimple", "breakout"],
+    dandruff: ["dandruff", "flakes"],
+    acne: ["acne", "pimple", "breakout"],
     "hair fall": ["hair fall", "hair loss", "thinning hair"],
-    "pigmentation": ["dark spots", "pigmentation", "uneven skin"],
-    "tan": ["tan", "sun tan"],
+    pigmentation: ["dark spots", "pigmentation", "uneven skin"],
+    tan: ["tan", "sun tan"],
+    darkspots: ["darkspots", "dark spots"],
+    undereye: ["dark circles", "undereye"],
   };
 
   for (const key in concernMap) {
@@ -67,16 +76,14 @@ function normalizeCategory(category: string) {
   return "general";
 }
 
-// ✅ 🔥 DIRECT PRODUCT FETCH (NO INTERNAL API CALL)
+// ✅ FETCH PRODUCTS (DB + STATIC)
 async function fetchAllProducts(): Promise<Product[]> {
   try {
     const supabase = createClient();
 
     const { data, error } = await supabase.from("products").select("*");
 
-    if (error) {
-      console.error("Supabase error:", error);
-    }
+    if (error) console.error("Supabase error:", error);
 
     const dbProducts: Product[] = (data || []).map((p: any) => ({
       id: p.id,
@@ -87,12 +94,12 @@ async function fetchAllProducts(): Promise<Product[]> {
       image: p.image_url || "/placeholder.png",
       inStock: p.in_stock ?? true,
       volume: p.volume,
-
       tags: p.tags || [],
       concerns: p.concerns || [],
       skin_type: p.skin_type || [],
       hair_type: p.hair_type || [],
       benefits: p.benefits || [],
+      priority: p.priority || 3, // ✅ DEFAULT
     }));
 
     const staticMapped: Product[] = staticProducts.map((p: any) => ({
@@ -104,39 +111,22 @@ async function fetchAllProducts(): Promise<Product[]> {
       image: p.image,
       inStock: p.inStock,
       volume: p.volume,
-
       tags: p.tags || [],
       concerns: p.concerns || [],
       skin_type: p.skin_type || [],
       hair_type: p.hair_type || [],
       benefits: p.benefits || [],
+      priority: p.priority || 3, // ✅ IMPORTANT
     }));
 
     return [...dbProducts, ...staticMapped];
   } catch (error) {
     console.error("Product fetch failed:", error);
-
-    // fallback to static
-    return staticProducts.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      category: p.category,
-      description: p.description,
-      image: p.image,
-      inStock: p.inStock,
-      volume: p.volume,
-
-      tags: p.tags || [],
-      concerns: p.concerns || [],
-      skin_type: p.skin_type || [],
-      hair_type: p.hair_type || [],
-      benefits: p.benefits || [],
-    }));
+    return staticProducts as Product[];
   }
 }
 
-// ✅ FILTER PRODUCTS
+// ✅ FILTER PRODUCTS (WITH PRIORITY)
 function filterProducts(
   products: Product[],
   categories: string[],
@@ -144,7 +134,8 @@ function filterProducts(
 ) {
   const results = products
     .map((product) => {
-      let score = 0;
+      let score = product.priority || 0; // ⭐ PRIORITY BASE
+
       const pCategory = normalizeCategory(product.category);
 
       if (!categories.includes("general") && !categories.includes(pCategory)) {
@@ -175,43 +166,62 @@ function filterProducts(
 
   const strongMatches = results.filter((p: any) => p.score >= 25);
 
-  const finalResults = strongMatches.length
-    ? strongMatches
-    : results.slice(0, 6);
-
-  return finalResults.slice(0, 6).map((p: any) => p.product);
+  return (strongMatches.length ? strongMatches : results)
+    .slice(0, 5)
+    .map((p: any) => p.product);
 }
 
-// ✅ RESPONSE TEXT
-function generateReply(concerns: string[], products: Product[]) {
-  let advice = "";
+// 🧠 GEMINI RESPONSE
+async function generateAIReply(
+  userMessage: string,
+  concerns: string[],
+  products: Product[]
+) {
+  try {
+    const productList = products
+      .map((p, i) => `${i + 1}. ${p.name} (₹${p.price})`)
+      .join("\n");
 
-  if (concerns.includes("dry hair")) {
-    advice += "💇 Dry hair needs deep hydration and nourishing oils.\n";
-  }
-  if (concerns.includes("oily skin")) {
-    advice += "🧴 Oily skin needs gentle cleansing and oil control.\n";
-  }
-  if (concerns.includes("acne")) {
-    advice += "🌿 Acne-prone skin benefits from antibacterial care.\n";
-  }
-  if (concerns.includes("hair fall")) {
-    advice += "🌱 Strengthening roots is important for hair fall.\n";
-  }
+    const prompt = `
+You are an expert organic beauty advisor.
 
-  if (!advice) {
-    advice = "✨ Here are some recommended products for you.";
-  }
+User concern: ${userMessage}
+Detected concerns: ${concerns.join(", ")}
 
-  return `
-💡 ${advice}
+IMPORTANT RULES:
+- ONLY recommend from the provided product list
+- DO NOT add any extra products
+- Keep response short and friendly
+- Explain WHY these products help
 
-🌟 Recommended Products:
+Products:
+${productList}
 
-${products.map((p, i) => `${i + 1}. ${p.name} - ₹${p.price}`).join("\n")}
-
-👉 Tap “Add to Cart” or contact us on WhatsApp 😊
+Return format:
+1. Short advice (1-2 lines)
+2. Recommended products list
 `;
+
+    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    });
+
+    const data = await res.json();
+
+    return (
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "✨ Here are some recommended products for you."
+    );
+  } catch (err) {
+    console.error("Gemini error:", err);
+    return "✨ Here are some recommended products for you.";
+  }
 }
 
 // ✅ API
@@ -229,10 +239,14 @@ export async function POST(request: NextRequest) {
       concerns
     );
 
-    const reply = generateReply(concerns, filteredProducts);
+    const aiReply = await generateAIReply(
+      message,
+      concerns,
+      filteredProducts
+    );
 
     return NextResponse.json({
-      message: reply,
+      message: `${aiReply}\n\n👉 Tap “Add to Cart” or contact us on WhatsApp 😊`,
       products: filteredProducts,
     });
   } catch (err) {

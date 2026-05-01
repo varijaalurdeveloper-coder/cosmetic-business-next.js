@@ -34,6 +34,8 @@ export interface Product {
   benefits?: string[];
   ingredients?: string[];
   usage?: string;
+
+  priority?: number;
 }
 
 /**
