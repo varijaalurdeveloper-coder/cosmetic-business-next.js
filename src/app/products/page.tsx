@@ -22,7 +22,7 @@ export default function ProductsPage() {
       try {
         console.log("📡 Fetching public products...");
 
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products", { cache: "no-store" });
         const data = await res.json();
 
         console.log("✅ Products:", data);

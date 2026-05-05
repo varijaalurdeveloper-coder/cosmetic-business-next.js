@@ -26,15 +26,32 @@ export async function GET() {
       description: p.description,
       price: p.price,
       category: p.category,
-      image: p.image_url,   // IMPORTANT mapping
+      image: p.image_url,
       inStock: p.in_stock,
       volume: p.volume,
     }));
 
-    // ✅ Merge static + DB products
-    const allProducts = [...dbProducts, ...staticProducts];
+    // ✅ Merge static + DB products, with DB products overriding static duplicates
+    const productsMap = new Map<string, any>();
 
-    return NextResponse.json({ products: allProducts });
+    for (const product of staticProducts) {
+      if (product?.id) {
+        productsMap.set(product.id, product);
+      }
+    }
+
+    for (const product of dbProducts) {
+      if (product?.id) {
+        productsMap.set(product.id, product);
+      }
+    }
+
+    const allProducts = Array.from(productsMap.values());
+
+    return NextResponse.json(
+      { products: allProducts },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
     console.error("❌ PRODUCTS API ERROR:", err);
 

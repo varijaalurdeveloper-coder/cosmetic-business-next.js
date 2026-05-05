@@ -94,8 +94,15 @@ export async function POST(req: Request) {
     if (!image?.trim()) return jsonError("Image is required", 400);
     if (!category?.trim()) return jsonError("Category is required", 400);
 
-    // ✅ KEEP CATEGORY CONSISTENT (NO CONVERSION)
-    const normalizedCategory = category;
+    // ✅ KEEP CATEGORY CONSISTENT (normalize legacy values)
+    const allowedCategories = ["hair", "skin", "lips", "body"];
+    const normalizedCategory = allowedCategories.includes(category)
+      ? category
+      : category === "skin-care"
+      ? "skin"
+      : category === "lip-care"
+      ? "lips"
+      : "skin";
 
     // ✅ OPTIONAL: fallback auto-tagging (only if admin didn't provide)
     let autoConcerns: string[] = [];

@@ -69,7 +69,7 @@ export function AdminProducts() {
 
     const fetchProducts = async () => {
       try {
-        const res = await fetch("/api/admin/products");
+        const res = await fetch("/api/admin/products", { cache: "no-store" });
         const data = await res.json();
 
         if (!res.ok) {
@@ -133,7 +133,7 @@ export function AdminProducts() {
         price: parseFloat(formData.price),
         inStock: formData.stock === "1",
         image: imageUrl,
-        category: "skin-care", // you can improve later with dropdown
+        category: "skin", // use valid category values for frontend filtering
 
         // ✅ AI FIELDS
         concerns: parseArray(formData.concerns),
@@ -145,6 +145,7 @@ export function AdminProducts() {
 
       const res = await fetch("/api/admin/products", {
         method: "POST",
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
         },
@@ -186,6 +187,7 @@ export function AdminProducts() {
   const handleDeleteProduct = async (id: string) => {
     const res = await fetch(`/api/admin/products/${id}`, {
       method: "DELETE",
+      cache: "no-store",
     });
 
     const data = await res.json();

@@ -136,19 +136,25 @@ export async function DELETE(req: Request, { params }: any) {
     const id = params?.id;
     if (!id) return jsonError("Product ID required", 400);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("products")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .select();
 
     if (error) {
       console.error("❌ DELETE ERROR:", error);
       return jsonError("Delete failed", 500);
     }
 
+    if (!data || data.length === 0) {
+      return jsonError("Product not found", 404);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Deleted",
+      product: data[0],
     });
   } catch (err) {
     console.error("❌ DELETE ERROR:", err);
