@@ -13,8 +13,9 @@ import {
 import { AdminProducts } from "@/components/admin/AdminProducts";
 import { AdminOrders } from "@/components/admin/AdminOrders";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
+import { AdminBlogs } from "@/components/admin/AdminBlogs";
 
-import { Package, TrendingUp } from "lucide-react";
+import { Package, TrendingUp, Bookmark } from "lucide-react";
 
 export default function AdminPage() {
   const { user, isAdmin } = useAuth();
@@ -65,7 +66,7 @@ export default function AdminPage() {
             📦 ORDERS & PRODUCTS TABS
         ========================= */}
         <Tabs defaultValue="orders" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-xl grid-cols-3">
             <TabsTrigger value="orders" className="gap-2">
               <Package className="h-4 w-4" />
               Orders
@@ -75,6 +76,11 @@ export default function AdminPage() {
               <TrendingUp className="h-4 w-4" />
               Products
             </TabsTrigger>
+
+            <TabsTrigger value="blogs" className="gap-2">
+              <Bookmark className="h-4 w-4" />
+              Blogs
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="mt-6">
@@ -83,6 +89,10 @@ export default function AdminPage() {
 
           <TabsContent value="products" className="mt-6">
             <AdminProducts />
+          </TabsContent>
+
+          <TabsContent value="blogs" className="mt-6">
+            <AdminBlogs />
           </TabsContent>
         </Tabs>
       </div>

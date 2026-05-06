@@ -1,27 +1,43 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { allBlogPostsSorted } from "@/lib/data/blog-posts-complete";
+import { loadAdminBlogPosts } from "@/lib/local-blog-store";
 import { getBlogImageUrl } from "@/utils/blog-images";
 import { Search, Calendar, User, Clock } from "lucide-react";
 
 export default function BlogPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Posts");
+  const [posts, setPosts] = useState(allBlogPostsSorted);
+
+  useEffect(() => {
+    const storedPosts = loadAdminBlogPosts();
+    const mergedPosts = new Map<string, typeof allBlogPostsSorted[number]>();
+
+    allBlogPostsSorted.forEach((post) => mergedPosts.set(post.slug, post));
+    storedPosts.forEach((post) => mergedPosts.set(post.slug, post));
+
+    const merged = Array.from(mergedPosts.values()).sort((a, b) =>
+      a.publishDate > b.publishDate ? -1 : a.publishDate < b.publishDate ? 1 : 0
+    );
+
+    setPosts(merged);
+  }, []);
 
   const categories = useMemo(() => {
-    return Array.from(new Set(allBlogPostsSorted.map((post) => post.category)));
-  }, []);
+    return Array.from(new Set(posts.map((post) => post.category)));
+  }, [posts]);
 
   const categoryTabs = useMemo(() => {
     return ["All Posts", ...categories];
   }, [categories]);
 
   const filteredPosts = useMemo(() => {
-    return allBlogPostsSorted.filter((post) => {
+    return posts.filter((post) => {
       const matchesCategory =
         activeCategory === "All Posts" || post.category === activeCategory;
 
@@ -35,7 +51,7 @@ export default function BlogPage() {
 
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, searchQuery]);
+  }, [activeCategory, searchQuery, posts]);
 
   return (
     <div className="min-h-screen bg-[#eaf6ef]">
