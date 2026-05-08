@@ -35,6 +35,7 @@ interface ProductForm {
   price: string;
   stock: string;
   image_url: string;
+  category: string;
 
   concernKeywords: string[];
   skin_type: string;
@@ -59,6 +60,7 @@ export function AdminProducts() {
     price: "",
     stock: "1",
     image_url: "",
+    category: "skin",
     concernKeywords: [],
     skin_type: "",
     hair_type: "",
@@ -106,24 +108,6 @@ export function AdminProducts() {
     if (!file) return;
     setSelectedFile(file);
   };
-
-  const selectedCategory = useMemo(() => {
-    const hasHair = formData.concernKeywords.some((keyword) =>
-      concernGroups.some(
-        (group) => group.category === "hair" && group.keywords.includes(keyword)
-      )
-    );
-
-    const hasLips = formData.concernKeywords.some((keyword) =>
-      concernGroups.some(
-        (group) => group.category === "lips" && group.keywords.includes(keyword)
-      )
-    );
-
-    if (hasHair) return "hair";
-    if (hasLips) return "lips";
-    return "skin";
-  }, [formData.concernKeywords]);
 
   const filteredKeywordGroups = useMemo(() => {
     const query = keywordSearch.toLowerCase().trim();
@@ -175,7 +159,7 @@ export function AdminProducts() {
         price: parseFloat(formData.price),
         inStock: formData.stock === "1",
         image: imageUrl,
-        category: selectedCategory,
+        category: formData.category,
         concernKeywords: formData.concernKeywords,
         skin_type: parseArray(formData.skin_type),
         hair_type: parseArray(formData.hair_type),
@@ -208,6 +192,7 @@ export function AdminProducts() {
         price: "",
         stock: "1",
         image_url: "",
+        category: "skin",
         concernKeywords: [],
         skin_type: "",
         hair_type: "",
@@ -315,6 +300,21 @@ export function AdminProducts() {
             <div className="grid gap-2">
               <Label htmlFor="image_url">Image URL</Label>
               <Input id="image_url" name="image_url" placeholder="Image URL" onChange={handleInputChange} value={formData.image_url} />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="category">Product Category</Label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="skin">Skin</option>
+                <option value="hair">Hair</option>
+                <option value="lips">Lips</option>
+              </select>
             </div>
 
             <div className="grid gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
