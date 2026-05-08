@@ -29,6 +29,7 @@ export async function GET() {
       image: p.image_url,
       inStock: p.in_stock,
       volume: p.volume,
+      concernKeywords: p.concerns || p.concernKeywords || [],
     }));
 
     // ✅ Merge static + DB products, with DB products overriding static duplicates

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyAdminSession } from "@/lib/admin-auth";
+import { sanitizeConcernKeywords } from "@/lib/ai/concern-keywords";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +11,22 @@ const supabase = createClient(
 // ✅ helper
 const jsonError = (message: string, status = 500) =>
   NextResponse.json({ success: false, error: message }, { status });
+
+function normalizeCategory(category: string) {
+  if (!category) return "skin";
+  const c = category.toLowerCase();
+  if (c.includes("hair")) return "hair";
+  if (c.includes("lip")) return "lips";
+  if (c.includes("skin") || c.includes("face") || c.includes("soap")) return "skin";
+  if (c === "body") return "body";
+  return "skin";
+}
+
+function normalizeKeywordInput(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === "string") return raw.split(",").map(String);
+  return [];
+}
 
 // ================= GET =================
 export async function GET() {
@@ -40,9 +57,7 @@ export async function GET() {
       image: p.image_url,
       inStock: p.in_stock,
       volume: p.volume,
-
-      // 🔥 AI FIELDS (VERY IMPORTANT)
-      concerns: p.concerns || [],
+      concernKeywords: p.concerns || p.concernKeywords || [],
       tags: p.tags || [],
       benefits: p.benefits || [],
       skin_type: p.skin_type || [],
@@ -76,9 +91,6 @@ export async function POST(req: Request) {
       category,
       inStock,
       volume,
-
-      // ✅ FROM FRONTEND (IMPORTANT)
-      concerns = [],
       tags = [],
       benefits = [],
       skin_type = [],
@@ -86,37 +98,40 @@ export async function POST(req: Request) {
       ingredients = [],
     } = body;
 
-    // ✅ VALIDATION
     if (!name?.trim()) return jsonError("Name is required", 400);
     if (!description?.trim()) return jsonError("Description is required", 400);
-    if (price === undefined || isNaN(price))
-      return jsonError("Valid price required", 400);
+    if (price === undefined || isNaN(price)) return jsonError("Valid price required", 400);
     if (!image?.trim()) return jsonError("Image is required", 400);
     if (!category?.trim()) return jsonError("Category is required", 400);
 
-    // ✅ KEEP CATEGORY CONSISTENT (normalize legacy values)
-    const allowedCategories = ["hair", "skin", "lips", "body"];
-    const normalizedCategory = allowedCategories.includes(category)
-      ? category
-      : category === "skin-care"
-      ? "skin"
-      : category === "lip-care"
-      ? "lips"
-      : "skin";
+    const normalizedCategory = normalizeCategory(category);
 
-    // ✅ OPTIONAL: fallback auto-tagging (only if admin didn't provide)
-    let autoConcerns: string[] = [];
-    let autoTags: string[] = [];
+    const rawKeywords = normalizeKeywordInput(body.concernKeywords ?? body.concerns ?? []);
+    let concernKeywords: string[] = [];
 
-    if (concerns.length === 0) {
-      const text = `${name} ${description}`.toLowerCase();
+    try {
+      concernKeywords = sanitizeConcernKeywords(rawKeywords);
+    } catch (error) {
+      return jsonError((error as Error).message, 400);
+    }
 
-      if (text.includes("dry")) autoConcerns.push("dry");
-      if (text.includes("acne")) autoConcerns.push("acne");
-      if (text.includes("dandruff")) autoConcerns.push("dandruff");
-      if (text.includes("hair fall")) autoConcerns.push("hair fall");
+    const text = `${name} ${description}`.toLowerCase();
+    const autoConcerns: string[] = [];
 
-      if (text.includes("glow")) autoTags.push("glow");
+    if (text.includes("dry skin") || text.includes("dry lips") || text.includes("dry hair")) {
+      autoConcerns.push("dry skin");
+    }
+    if (text.includes("acne") || text.includes("breakout") || text.includes("pimple")) {
+      autoConcerns.push("acne");
+    }
+    if (text.includes("dandruff") || text.includes("flaky scalp")) {
+      autoConcerns.push("dandruff");
+    }
+    if (text.includes("hair fall") || text.includes("hair loss")) {
+      autoConcerns.push("hair fall");
+    }
+    if (text.includes("dark spots") || text.includes("pigmentation") || text.includes("uneven")) {
+      autoConcerns.push("pigmentation");
     }
 
     const { data, error } = await supabase
@@ -129,10 +144,8 @@ export async function POST(req: Request) {
         category: normalizedCategory,
         in_stock: inStock ?? true,
         volume: volume ?? null,
-
-        // ✅ USE ADMIN DATA FIRST
-        concerns: concerns.length ? concerns : autoConcerns,
-        tags: tags.length ? tags : autoTags,
+        concerns: concernKeywords.length ? concernKeywords : autoConcerns,
+        tags,
         benefits,
         skin_type,
         hair_type,

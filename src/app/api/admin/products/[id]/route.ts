@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyAdminSession } from "@/lib/admin-auth";
+import { sanitizeConcernKeywords } from "@/lib/ai/concern-keywords";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,6 +47,7 @@ export async function GET(req: Request, { params }: any) {
         image: data.image_url,
         inStock: data.in_stock,
         volume: data.volume,
+        concernKeywords: data.concerns || data.concernKeywords || [],
       },
     });
   } catch (err) {
@@ -87,6 +89,15 @@ export async function PUT(req: Request, { params }: any) {
     if (body.category !== undefined) updateData.category = body.category;
     if (body.inStock !== undefined) updateData.in_stock = body.inStock;
     if (body.volume !== undefined) updateData.volume = body.volume;
+
+    if (body.concernKeywords !== undefined || body.concerns !== undefined) {
+      const rawKeywords = body.concernKeywords ?? body.concerns;
+      try {
+        updateData.concerns = sanitizeConcernKeywords(rawKeywords);
+      } catch (error) {
+        return jsonError((error as Error).message, 400);
+      }
+    }
 
     if (Object.keys(updateData).length === 0) {
       return jsonError("No fields to update", 400);

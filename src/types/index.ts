@@ -28,6 +28,7 @@ export interface Product {
    * 🔥 AI FIELDS (OPTIONAL)
    */
   concerns?: string[];
+  concernKeywords?: string[];
   skin_type?: string[];
   hair_type?: string[];
   tags?: string[];
