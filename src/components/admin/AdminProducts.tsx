@@ -405,20 +405,3 @@ export function AdminProducts() {
     </Card>
   );
 }
-
-
-          {/* ✅ AI FIELDS */}
-          <Input name="concerns" placeholder="Concerns (comma separated)" onChange={handleInputChange} />
-          <Input name="skin_type" placeholder="Skin Type (oily, dry...)" onChange={handleInputChange} />
-          <Input name="hair_type" placeholder="Hair Type" onChange={handleInputChange} />
-          <Input name="benefits" placeholder="Benefits" onChange={handleInputChange} />
-          <Input name="ingredients" placeholder="Ingredients" onChange={handleInputChange} />
-
-          <Button onClick={handleSaveProduct} disabled={submitting}>
-            {submitting ? "Saving..." : "Save Product"}
-          </Button>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
