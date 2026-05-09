@@ -1,6 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { products as staticProducts } from "@/lib/data/products";
+import {
+  getAllowedConcernKeyword,
+  getConcernCategoriesFromText,
+  getConcernKeywordsFromText,
+  getConcernCategory,
+  getConcernRoot,
+  getConcernRootsFromKeywords,
+  hasBeautyIntent,
+  isIrrelevantQuery,
+} from "@/lib/ai/concern-keywords";
 
 interface Product {
   id: string;
@@ -11,78 +21,86 @@ interface Product {
   image: string;
   inStock: boolean;
   volume?: string;
-
   tags?: string[];
   concerns?: string[];
+  concernKeywords?: string[];
   skin_type?: string[];
   hair_type?: string[];
   benefits?: string[];
-
-  priority?: number; // ✅ NEW
+  priority?: number;
 }
 
-// 🔐 GEMINI CONFIG
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent";
 
-// ✅ INTENT DETECTION
-function detectIntent(message: string) {
-  const text = message.toLowerCase();
-
-  const categories = new Set<"hair" | "skin" | "lips">();
-  const concerns = new Set<string>();
-
-  if (/(hair|scalp)/.test(text)) categories.add("hair");
-  if (/(lip)/.test(text)) categories.add("lips");
-  if (/(skin|face)/.test(text)) categories.add("skin");
-
-  const concernMap: Record<string, string[]> = {
-    "dry hair": ["dry hair", "frizzy hair", "rough hair"],
-    "oily skin": ["oily skin", "greasy skin"],
-    "dry skin": ["dry skin", "flaky skin"],
-    dandruff: ["dandruff", "flakes"],
-    acne: ["acne", "pimple", "breakout"],
-    "hair fall": ["hair fall", "hair loss", "thinning hair"],
-    pigmentation: ["dark spots", "pigmentation", "uneven skin"],
-    tan: ["tan", "sun tan"],
-    darkspots: ["darkspots", "dark spots"],
-    undereye: ["dark circles", "undereye"],
-  };
-
-  for (const key in concernMap) {
-    if (concernMap[key].some((keyword) => text.includes(keyword))) {
-      concerns.add(key);
-    }
-  }
-
-  return {
-    categories: categories.size ? Array.from(categories) : ["general"],
-    concerns: Array.from(concerns),
-  };
-}
-
-// ✅ NORMALIZE CATEGORY
 function normalizeCategory(category: string) {
   if (!category) return "general";
 
   const c = category.toLowerCase();
-
   if (c.includes("hair")) return "hair";
+  if (c.includes("lip")) return "lips";
   if (c.includes("skin") || c.includes("face") || c.includes("soap"))
     return "skin";
-  if (c.includes("lip")) return "lips";
-
   return "general";
 }
 
-// ✅ FETCH PRODUCTS (DB + STATIC)
+function normalizeProductConcernKeywords(product: Product): string[] {
+  const rawKeywords = [
+    ...(product.concernKeywords ?? []),
+    ...(product.concerns ?? []),
+  ];
+
+  return Array.from(
+    new Set(
+      rawKeywords
+        .map((keyword) => getAllowedConcernKeyword(String(keyword).trim()))
+        .filter((keyword): keyword is string => Boolean(keyword))
+    )
+  );
+}
+
+function calculateProductScore(productKeywords: string[], userKeywords: string[]) {
+  let score = 0;
+  const matchedRoots = new Set<string>();
+
+  for (const userKeyword of userKeywords) {
+    const userRoot = getConcernRoot(userKeyword) ?? userKeyword;
+    const exactMatch = productKeywords.some((keyword) => keyword === userKeyword);
+    const strongMatch = productKeywords.some(
+      (keyword) => getConcernRoot(keyword) === userRoot
+    );
+    const secondaryMatch = productKeywords.some(
+      (keyword) =>
+        getConcernCategory(keyword) !== null &&
+        getConcernCategory(keyword) === getConcernCategory(userKeyword)
+    );
+
+    if (exactMatch) {
+      score += 10;
+      matchedRoots.add(userRoot);
+      continue;
+    }
+
+    if (strongMatch) {
+      score += 7;
+      matchedRoots.add(userRoot);
+      continue;
+    }
+
+    if (secondaryMatch) {
+      score += 3;
+    }
+  }
+
+  return { score, matchedRoots: Array.from(matchedRoots) };
+}
+
 async function fetchAllProducts(): Promise<Product[]> {
   try {
     const supabase = createClient();
 
     const { data, error } = await supabase.from("products").select("*");
-
     if (error) console.error("Supabase error:", error);
 
     const dbProducts: Product[] = (data || []).map((p: any) => ({
@@ -95,11 +113,12 @@ async function fetchAllProducts(): Promise<Product[]> {
       inStock: p.in_stock ?? true,
       volume: p.volume,
       tags: p.tags || [],
-      concerns: p.concerns || [],
+      concerns: p.concerns || p.concernKeywords || [],
+      concernKeywords: p.concernKeywords || p.concerns || [],
       skin_type: p.skin_type || [],
       hair_type: p.hair_type || [],
       benefits: p.benefits || [],
-      priority: p.priority || 3, // ✅ DEFAULT
+      priority: p.priority || 3,
     }));
 
     const staticMapped: Product[] = staticProducts.map((p: any) => ({
@@ -112,11 +131,12 @@ async function fetchAllProducts(): Promise<Product[]> {
       inStock: p.inStock,
       volume: p.volume,
       tags: p.tags || [],
-      concerns: p.concerns || [],
+      concerns: p.concerns || p.concernKeywords || [],
+      concernKeywords: p.concernKeywords || p.concerns || [],
       skin_type: p.skin_type || [],
       hair_type: p.hair_type || [],
       benefits: p.benefits || [],
-      priority: p.priority || 3, // ✅ IMPORTANT
+      priority: p.priority || 3,
     }));
 
     return [...dbProducts, ...staticMapped];
@@ -126,55 +146,50 @@ async function fetchAllProducts(): Promise<Product[]> {
   }
 }
 
-// ✅ FILTER PRODUCTS (WITH PRIORITY)
 function filterProducts(
   products: Product[],
   categories: string[],
-  concerns: string[]
+  userKeywords: string[]
 ) {
-  const results = products
+  const requiredRoots = getConcernRootsFromKeywords(userKeywords);
+
+  const scored = products
     .map((product) => {
-      let score = product.priority || 0; // ⭐ PRIORITY BASE
+      const productKeywords = normalizeProductConcernKeywords(product);
+      if (productKeywords.length === 0) return null;
+      if (!product.inStock) return null;
 
-      const pCategory = normalizeCategory(product.category);
-
-      if (!categories.includes("general") && !categories.includes(pCategory)) {
+      const productCategory = normalizeCategory(product.category);
+      if (!categories.includes("general") && !categories.includes(productCategory)) {
         return null;
       }
 
-      score += 5;
+      const { score, matchedRoots } = calculateProductScore(
+        productKeywords,
+        userKeywords
+      );
 
-      concerns.forEach((c) => {
-        const lc = c.toLowerCase();
+      if (
+        requiredRoots.length > 0 &&
+        requiredRoots.some((root) => !matchedRoots.includes(root))
+      ) {
+        return null;
+      }
 
-        if (product.concerns?.some((x) => x.toLowerCase().includes(lc)))
-          score += 30;
-        if (product.benefits?.some((x) => x.toLowerCase().includes(lc)))
-          score += 20;
-        if (product.tags?.some((x) => x.toLowerCase().includes(lc)))
-          score += 15;
+      const scoreWithPriority = score + (product.priority ?? 0);
+      if (scoreWithPriority < 7) return null;
 
-        const text = `${product.name} ${product.description}`.toLowerCase();
-        if (text.includes(lc)) score += 10;
-      });
-
-      return { product, score };
+      return { product, score: scoreWithPriority };
     })
-    .filter(Boolean)
-    .filter((p: any) => p.product.inStock)
-    .sort((a: any, b: any) => b.score - a.score);
+    .filter((item): item is { product: Product; score: number } => Boolean(item))
+    .sort((a, b) => b.score - a.score);
 
-  const strongMatches = results.filter((p: any) => p.score >= 25);
-
-  return (strongMatches.length ? strongMatches : results)
-    .slice(0, 5)
-    .map((p: any) => p.product);
+  return scored.slice(0, 5).map((item) => item.product);
 }
 
-// 🧠 GEMINI RESPONSE
 async function generateAIReply(
   userMessage: string,
-  concerns: string[],
+  userKeywords: string[],
   products: Product[]
 ) {
   try {
@@ -182,11 +197,10 @@ async function generateAIReply(
       .map((p, i) => `${i + 1}. ${p.name} (₹${p.price})`)
       .join("\n");
 
-    const prompt = `
-You are an expert organic beauty advisor.
+    const prompt = `You are an expert organic beauty advisor.
 
 User concern: ${userMessage}
-Detected concerns: ${concerns.join(", ")}
+Detected concern keywords: ${userKeywords.join(", ") || "none"}
 
 IMPORTANT RULES:
 - ONLY recommend from the provided product list
@@ -224,24 +238,43 @@ Return format:
   }
 }
 
-// ✅ API
 export async function POST(request: NextRequest) {
   try {
     const { message } = await request.json();
+    const normalizedMessage = String(message || "").trim();
 
+    if (!normalizedMessage) {
+      return NextResponse.json({
+        message:
+          "Please tell me your skincare, haircare, or lip concern so I can recommend the right products.",
+        products: [],
+      });
+    }
+
+    if (isIrrelevantQuery(normalizedMessage) && !hasBeautyIntent(normalizedMessage)) {
+      return NextResponse.json({
+        message:
+          "I can only help with skincare, haircare, and lip care product recommendations.",
+        products: [],
+      });
+    }
+
+    const userKeywords = getConcernKeywordsFromText(normalizedMessage);
+    const categories = getConcernCategoriesFromText(normalizedMessage);
     const allProducts = await fetchAllProducts();
+    const filteredProducts = filterProducts(allProducts, categories, userKeywords);
 
-    const { categories, concerns } = detectIntent(message);
-
-    const filteredProducts = filterProducts(
-      allProducts,
-      categories,
-      concerns
-    );
+    if (filteredProducts.length === 0) {
+      return NextResponse.json({
+        message:
+          "No products are currently available for your concern. Please check our products page for similar products.\n/products",
+        products: [],
+      });
+    }
 
     const aiReply = await generateAIReply(
-      message,
-      concerns,
+      normalizedMessage,
+      userKeywords,
       filteredProducts
     );
 

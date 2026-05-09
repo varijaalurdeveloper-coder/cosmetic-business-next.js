@@ -9,7 +9,8 @@ category:"hair-care",
 description:"100% organic hair oil for nourishment and hair growth. Made with natural herbs.",
 image:"https://images.unsplash.com/photo-1669281393403-e1f3248dce2b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
 inStock:true,
-volume:"100ml"
+volume:"100ml",
+concerns:["hair fall","hair growth","dry hair","weak roots","brittle hair"]
 },
 {
 id:"2",
@@ -19,7 +20,8 @@ category:"hair-care",
 description:"Natural herbal shampoo for healthy, shiny hair. SLS and paraben free.",
 image:"https://images.unsplash.com/photo-1608571899793-a1c0c27a7555?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
 inStock:true,
-volume:"100ml"
+volume:"100ml",
+concerns:["dull hair","lack of shine","flat hair"]
 },
 {
 id:"3",
@@ -38,7 +40,8 @@ category:"skin-care",
 description:"Traditional herbal bath powder for natural cleansing and glow.",
 image:"https://images.unsplash.com/photo-1717051029512-6c8e675a5ad0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
 inStock:true,
-volume:"100gm"
+volume:"100gm",
+concerns:["dull skin","tanning","pigmentation","skin brightening"]
 },
 {
 id:"5",
@@ -47,7 +50,8 @@ price:100,
 category:"skin-care",
 description:"Pure aloe vera gel for skin hydration and soothing.",
 image:"https://images.unsplash.com/photo-1619451334792-150fd785ee74?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dry skin","sensitive skin","sun damage","irritation"]
 },
 {
 id:"6",
@@ -56,7 +60,8 @@ price:100,
 category:"skin-care",
 description:"Luxurious saffron gel for radiant and glowing skin.",
 image:"https://images.unsplash.com/photo-1760507776802-358a3868cbb3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dull skin","skin brightening","glowing skin"]
 },
 {
 id:"7",
@@ -65,7 +70,8 @@ price:100,
 category:"lip-care",
 description:"100% organic lipstick available in red and pink shades.",
 image:"https://images.unsplash.com/photo-1584013544027-acfe4d8ca478?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["soft lips","lip hydration","lip nourishment"]
 },
 {
 id:"8",
@@ -74,7 +80,8 @@ price:50,
 category:"lip-care",
 description:"Nourishing lip balm with natural beetroot and rose extracts.",
 image:"https://images.unsplash.com/photo-1556228720-74787810a501?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dry lips","chapped lips","lip hydration","soft lips"]
 },
 {
 id:"9",
@@ -83,7 +90,8 @@ price:100,
 category:"soap",
 description:"Antibacterial neem and tulasi soap for clear skin.",
 image:"https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["acne","oily skin","clogged pores"]
 },
 {
 id:"10",
@@ -92,7 +100,8 @@ price:100,
 category:"soap",
 description:"Natural de-tan soap to remove tan and brighten skin.",
 image:"https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["tanning","pigmentation","uneven skin tone","skin brightening"]
 },
 {
 id:"11",
@@ -101,7 +110,8 @@ price:100,
 category:"soap",
 description:"Premium sandalwood soap for fragrant and glowing skin.",
 image:"https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dull skin","skin brightening","glowing skin"]
 },
 {
 id:"12",
@@ -110,7 +120,8 @@ price:100,
 category:"soap",
 description:"Specially formulated soap to reduce pigmentation.",
 image:"https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["pigmentation","dark spots","uneven skin tone"]
 },
 {
 id:"13",
@@ -119,7 +130,8 @@ price:250,
 category:"hair-care",
 description:"Eco-friendly shampoo bar for natural hair cleansing.",
 image:"https://images.unsplash.com/photo-1621483942317-baa33317d58f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dandruff","oily scalp","dry scalp"]
 },
 {
 id:"14",
@@ -128,7 +140,8 @@ price:150,
 category:"soap",
 description:"Luxurious saffron soap for radiant complexion.",
 image:"https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dull skin","skin brightening","glowing skin"]
 },
 {
 id:"15",
@@ -137,7 +150,8 @@ price:150,
 category:"soap",
 description:"Gentle baby bath soap with traditional nalangumaavu.",
 image:"https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["sensitive skin","dry skin"]
 },
 {
 id:"16",
@@ -147,7 +161,8 @@ category:"skin-care",
 description:"SLS and paraben free face wash for gentle cleansing.",
 image:"https://images.unsplash.com/photo-1609175214983-594001465d18?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
 inStock:true,
-volume:"100ml"
+volume:"100ml",
+concerns:["acne","oily skin","pimples","clogged pores"]
 },
 {
 id:"17",
@@ -157,7 +172,8 @@ category:"skin-care",
 description:"Organic body wash for refreshing and nourishing skin.",
 image:"https://images.unsplash.com/photo-1647452118444-44d38fc1637b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
 inStock:true,
-volume:"100ml"
+volume:"100ml",
+concerns:["dull skin","oily skin"]
 },
 {
 id:"18",
@@ -166,7 +182,8 @@ price:300,
 category:"skin-care",
 description:"Reduces dark circles and puffiness around eyes.",
 image:"https://images.unsplash.com/photo-1592869642456-7fee88e27aad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dark circles","under eye bags","puffy eyes"]
 },
 {
 id:"19",
@@ -175,7 +192,8 @@ price:200,
 category:"skin-care",
 description:"Natural skin brightening cream for even tone.",
 image:"https://images.unsplash.com/photo-1751821195194-0bbc1caab446?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["pigmentation","dark spots","uneven skin tone","skin brightening"]
 },
 {
 id:"20",
@@ -184,7 +202,8 @@ price:350,
 category:"skin-care",
 description:"Exfoliating body scrub for smooth and glowing skin.",
 image:"https://images.unsplash.com/photo-1677769237703-629d082d89bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dull skin","clogged pores","rough texture"]
 },
 {
 id:"21",
@@ -193,7 +212,8 @@ price:300,
 category:"hair-care",
 description:"Nourishing leave-in conditioner for manageable hair.",
 image:"https://images.unsplash.com/photo-1686121544192-6112bb5ffded?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dry hair","frizzy hair","silky hair"]
 },
 {
 id:"22",
@@ -202,7 +222,8 @@ price:200,
 category:"hair-care",
 description:"Effective anti-dandruff shampoo with natural ingredients.",
 image:"https://images.unsplash.com/photo-1704819177121-cd91a0d4351c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-inStock:true
+inStock:true,
+concerns:["dandruff","flaky scalp","itchy scalp"]
 }
 ];
 
