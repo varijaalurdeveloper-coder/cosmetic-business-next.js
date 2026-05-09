@@ -60,6 +60,26 @@ function normalizeProductConcernKeywords(product: Product): string[] {
   );
 }
 
+const faceProductRegex = /\b(face|facial|under eye|eye|cheek|forehead|chin|dark circles|fine lines|wrinkles|pore|t-zone)\b/;
+
+function isFaceConcern(message: string, userKeywords: string[]) {
+  const normalized = message.toLowerCase();
+
+  if (userKeywords.some((keyword) => keyword.includes("face"))) {
+    return true;
+  }
+
+  return faceProductRegex.test(normalized);
+}
+
+function isFaceProduct(product: Product) {
+  const text = [product.name, product.description, ...(product.tags ?? [])]
+    .join(" ")
+    .toLowerCase();
+
+  return faceProductRegex.test(text);
+}
+
 function calculateProductScore(productKeywords: string[], userKeywords: string[]) {
   let score = 0;
   const matchedRoots = new Set<string>();
@@ -139,17 +159,66 @@ async function fetchAllProducts(): Promise<Product[]> {
       priority: p.priority || 3,
     }));
 
-    return [...dbProducts, ...staticMapped];
+    const productMap = new Map<string, Product>();
+
+    for (const product of [...dbProducts, ...staticMapped]) {
+      if (!productMap.has(product.id)) {
+        productMap.set(product.id, product);
+      }
+    }
+
+    return Array.from(productMap.values());
   } catch (error) {
     console.error("Product fetch failed:", error);
     return staticProducts as Product[];
   }
 }
 
+function selectRecommendedProducts(
+  scoredItems: { product: Product; score: number }[],
+  categories: string[]
+) {
+  const results: Product[] = [];
+  const added = new Set<string>();
+  const buckets = new Map<string, { product: Product; score: number }[]>();
+
+  for (const item of scoredItems) {
+    const category = normalizeCategory(item.product.category);
+    if (!buckets.has(category)) buckets.set(category, []);
+    buckets.get(category)!.push(item);
+  }
+
+  for (const bucket of buckets.values()) {
+    bucket.sort((a, b) => b.score - a.score);
+  }
+
+  for (const category of categories) {
+    const bucket = buckets.get(category);
+    if (bucket) {
+      const next = bucket.find((item) => !added.has(item.product.id));
+      if (next) {
+        results.push(next.product);
+        added.add(next.product.id);
+      }
+    }
+  }
+
+  for (const item of scoredItems) {
+    if (results.length >= 5) break;
+    if (!added.has(item.product.id)) {
+      results.push(item.product);
+      added.add(item.product.id);
+    }
+  }
+
+  return results;
+}
+
 function filterProducts(
   products: Product[],
   categories: string[],
-  userKeywords: string[]
+  userKeywords: string[],
+  faceConcern: boolean
 ) {
   const requiredRoots = getConcernRootsFromKeywords(userKeywords);
 
@@ -164,6 +233,10 @@ function filterProducts(
         return null;
       }
 
+      if (faceConcern && productCategory === "skin" && !isFaceProduct(product)) {
+        return null;
+      }
+
       const { score, matchedRoots } = calculateProductScore(
         productKeywords,
         userKeywords
@@ -171,7 +244,7 @@ function filterProducts(
 
       if (
         requiredRoots.length > 0 &&
-        requiredRoots.some((root) => !matchedRoots.includes(root))
+        requiredRoots.every((root) => !matchedRoots.includes(root))
       ) {
         return null;
       }
@@ -184,7 +257,7 @@ function filterProducts(
     .filter((item): item is { product: Product; score: number } => Boolean(item))
     .sort((a, b) => b.score - a.score);
 
-  return scored.slice(0, 5).map((item) => item.product);
+  return selectRecommendedProducts(scored, categories);
 }
 
 async function generateAIReply(
@@ -261,8 +334,14 @@ export async function POST(request: NextRequest) {
 
     const userKeywords = getConcernKeywordsFromText(normalizedMessage);
     const categories = getConcernCategoriesFromText(normalizedMessage);
+    const faceConcern = isFaceConcern(normalizedMessage, userKeywords);
     const allProducts = await fetchAllProducts();
-    const filteredProducts = filterProducts(allProducts, categories, userKeywords);
+    const filteredProducts = filterProducts(
+      allProducts,
+      categories,
+      userKeywords,
+      faceConcern
+    );
 
     if (filteredProducts.length === 0) {
       return NextResponse.json({

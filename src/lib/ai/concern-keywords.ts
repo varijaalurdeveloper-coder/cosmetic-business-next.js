@@ -34,6 +34,7 @@ export const concernGroups: ConcernGroup[] = [
     rootKeyword: "oily skin",
     keywords: [
       "oily skin",
+      "oily face",
       "greasy skin",
       "excess oil",
       "sebum control",
