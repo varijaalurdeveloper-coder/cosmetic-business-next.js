@@ -125,6 +125,11 @@ export const concernGroups: ConcernGroup[] = [
       "under eye bags",
       "puffy eyes",
       "eye wrinkles",
+      "under eye darkness",
+      "dark under eye",
+      "dark circles under eyes",
+      "under eye dark circles",
+      "eye darkness",
     ],
   },
   {
@@ -294,6 +299,9 @@ const normalizeText = (value: string) =>
     .replace(/[-]/g, " ")
     .replace(/[â€˜â€™â€šâ€›]/g, "'")
     .replace(/[â€œâ€â€žâ€Ÿ]/g, '"')
+    .replace(/undereye/g, "under eye")
+    .replace(/darkcircle/g, "dark circles")
+    .replace(/dark circles?/g, "dark circles")
     .replace(/[^a-z0-9\s'\-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
