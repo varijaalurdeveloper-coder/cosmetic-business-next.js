@@ -26,6 +26,7 @@ interface Order {
   phone: string;
   address: string;
   total?: number | string;
+  subtotal?: number;
   totalAmount?: number;
   status: "pending" | "confirmed" | "shipped" | "delivered";
   createdAt: string;
@@ -96,9 +97,9 @@ export default function OrdersPage() {
   };
 
   const getOrderTotal = (order: Order) => {
-    const fromApi = Number(order.total ?? order.totalAmount ?? NaN);
-    if (Number.isFinite(fromApi) && fromApi >= 0) {
-      return fromApi;
+    const subtotal = Number(order.subtotal ?? NaN);
+    if (Number.isFinite(subtotal) && subtotal >= 0) {
+      return subtotal;
     }
 
     return order.items.reduce(

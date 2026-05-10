@@ -38,6 +38,7 @@ interface AdminOrder {
   phone: string;
   address: string;
   total?: number | string;
+  subtotal?: number;
   status: "pending" | "confirmed" | "shipped" | "delivered";
   createdAt: string;
   items: OrderItem[];
@@ -91,9 +92,9 @@ export function AdminOrders() {
   };
 
   const getOrderTotal = (order: AdminOrder) => {
-    const rawTotal = Number(order.total);
-    if (Number.isFinite(rawTotal) && rawTotal >= 0) {
-      return rawTotal;
+    const subtotal = Number(order.subtotal ?? NaN);
+    if (Number.isFinite(subtotal) && subtotal >= 0) {
+      return subtotal;
     }
 
     return order.items.reduce(

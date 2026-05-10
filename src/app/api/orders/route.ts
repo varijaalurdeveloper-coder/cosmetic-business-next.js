@@ -164,6 +164,7 @@ export async function GET(req: Request) {
 
         // 🔥 Analytics fields
         total: normalizedTotal,
+        subtotal: computedItemsTotal,
         totalAmount: normalizedTotal,
         status: order.status,
         createdAt: order.created_at,

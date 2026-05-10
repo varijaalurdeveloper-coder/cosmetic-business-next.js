@@ -57,18 +57,28 @@ export async function GET(req: Request) {
     }
 
     // Format orders for API response
-    const formattedOrders = (orders || []).map((order: any) => ({
-      id: order.id,
-      userId: order.user_id,
-      customerName: order.customer_name,
-      email: order.email,
-      phone: order.phone,
-      address: order.address,
-      total: order.total,
-      status: order.status,
-      createdAt: order.created_at,
-      items: order.order_items || [],
-    }));
+    const formattedOrders = (orders || []).map((order: any) => {
+      const items = order.order_items || [];
+      const subtotal = items.reduce(
+        (sum: number, item: any) =>
+          sum + Number(item.price || 0) * Number(item.quantity || 0),
+        0
+      );
+
+      return {
+        id: order.id,
+        userId: order.user_id,
+        customerName: order.customer_name,
+        email: order.email,
+        phone: order.phone,
+        address: order.address,
+        total: order.total,
+        subtotal,
+        status: order.status,
+        createdAt: order.created_at,
+        items,
+      };
+    });
 
     return NextResponse.json({
       success: true,
