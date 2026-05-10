@@ -64,14 +64,17 @@ export const concernGroups: ConcernGroup[] = [
     rootKeyword: "pigmentation",
     keywords: [
       "pigmentation",
+      "pigmantation",
       "hyperpigmentation",
       "dark spots",
+      "dark spots remove",
       "brown spots",
       "uneven skin tone",
       "sun spots",
       "age spots",
       "tanning",
       "suntan removal",
+      "tan removal",
     ],
   },
   {
@@ -82,6 +85,8 @@ export const concernGroups: ConcernGroup[] = [
       "dull skin",
       "no glow",
       "glowing skin",
+      "face glow",
+      "glow cream",
       "radiant skin",
       "skin brightening",
       "whitening",
@@ -151,11 +156,17 @@ export const concernGroups: ConcernGroup[] = [
     keywords: [
       "hair fall",
       "hair loss",
+      "hair fall control",
       "excessive hair fall",
       "thinning hair",
       "bald spots",
       "receding hairline",
       "weak roots",
+      "baal jhad",
+      "bal jhad",
+      "baal jhadna",
+      "baal girna",
+      "hair loss control",
     ],
   },
   {
@@ -175,6 +186,7 @@ export const concernGroups: ConcernGroup[] = [
     rootKeyword: "dandruff",
     keywords: [
       "dandruff",
+      "dandruf",
       "flaky scalp",
       "itchy scalp",
       "dry scalp",
@@ -244,7 +256,9 @@ export const concernGroups: ConcernGroup[] = [
     rootKeyword: "dry lips",
     keywords: [
       "dry lips",
+      "dry lip",
       "chapped lips",
+      "chapped lip",
       "cracked lips",
       "peeling lips",
     ],
@@ -282,6 +296,33 @@ export const concernGroups: ConcernGroup[] = [
     ],
   },
   {
+    category: "skin",
+    groupName: "Underarm Concerns",
+    rootKeyword: "underarm darkness",
+    keywords: [
+      "underarm darkness",
+      "under arm darkness",
+      "underarm dark",
+      "underarm darkening",
+      "dark underarms",
+      "dark underarm",
+      "underarm pigmentation",
+    ],
+  },
+  {
+    category: "skin",
+    groupName: "Baby Care",
+    rootKeyword: "baby care",
+    keywords: [
+      "baby care",
+      "baby skin",
+      "baby bath",
+      "baby lotion",
+      "gentle baby skin",
+      "baby products",
+    ],
+  },
+  {
     category: "lips",
     groupName: "Protection & Repair",
     rootKeyword: "sun protection for lips",
@@ -301,13 +342,63 @@ const normalizeText = (value: string) =>
     .replace(/[â€˜â€™â€šâ€›]/g, "'")
     .replace(/[â€œâ€â€žâ€Ÿ]/g, '"')
     .replace(/undereye/g, "under eye")
+    .replace(/underarms?/g, "under arm")
     .replace(/darkcircle/g, "dark circles")
     .replace(/dark circles?/g, "dark circles")
+    .replace(/\b(ke|ka|liye|ke liye|hain|hai|rahe|rahi|raha)\b/g, " ")
     .replace(/[^a-z0-9\s'\-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
 export const allConcernKeywords = concernGroups.flatMap((group) => group.keywords);
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i += 1) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j += 1) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i += 1) {
+    for (let j = 1; j <= a.length; j += 1) {
+      if (b[i - 1] === a[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+function findClosestConcernKeyword(normalizedPhrase: string): string | null {
+  let bestScore = 0.75;
+  let bestKeyword: string | null = null;
+
+  for (const keyword of canonicalKeywordMap.keys()) {
+    const maxLength = Math.max(normalizedPhrase.length, keyword.length);
+    if (maxLength === 0) continue;
+
+    const distance = levenshteinDistance(normalizedPhrase, keyword);
+    const similarity = 1 - distance / maxLength;
+
+    if (similarity > bestScore) {
+      bestScore = similarity;
+      bestKeyword = keyword;
+    }
+  }
+
+  return bestKeyword;
+}
 
 const canonicalKeywordMap = new Map<string, string>();
 const keywordCategoryMap = new Map<string, ConcernCategory>();
@@ -373,6 +464,24 @@ export function getConcernKeywordsFromText(text: string): string[] {
     }
   }
 
+  const tokens = normalizedText.split(" ").filter(Boolean);
+
+  for (let windowSize = Math.min(4, tokens.length); windowSize >= 1; windowSize -= 1) {
+    for (let i = 0; i + windowSize <= tokens.length; i += 1) {
+      const phrase = tokens.slice(i, i + windowSize).join(" ");
+      if (phrase.length < 3) continue;
+      if (["and", "or", "for", "the", "to", "with", "my", "me", "ke", "ka", "liye", "hai", "hain", "rahe", "rahi", "raha"].includes(phrase)) {
+        continue;
+      }
+
+      const closest = findClosestConcernKeyword(phrase);
+      if (closest) {
+        const canonical = canonicalKeywordMap.get(closest);
+        if (canonical) matched.add(canonical);
+      }
+    }
+  }
+
   return Array.from(matched);
 }
 
@@ -421,7 +530,7 @@ const irrelevantSignals = [
 export function hasBeautyIntent(text: string): boolean {
   const normalized = normalizeText(text);
   return (
-    /\b(skin|hair|lip|scalp|sp?f|sunscreen|sun protection|beauty|acne|dandruff|dry|dark circles|pigment|frizz|chapped|lips?)\b/.test(normalized) ||
+    /\b(skin|hair|baal|lip|lips|honth|scalp|sp?f|sunscreen|sun protection|beauty|acne|pimple|pimples|dandruff|dry|dark circles|pigment|frizz|chapped|tan|glow|bal|jhad)\b/.test(normalized) ||
     getConcernKeywordsFromText(normalized).length > 0
   );
 }
@@ -429,7 +538,7 @@ export function hasBeautyIntent(text: string): boolean {
 export function isIrrelevantQuery(text: string): boolean {
   const normalized = normalizeText(text);
   const hasConcern = getConcernKeywordsFromText(normalized).length > 0;
-  const hasBeauty = hasConcern || /(skin|hair|lip|scalp|sunscreen|sun protection|beauty)/.test(normalized);
+  const hasBeauty = hasConcern || /\b(skin|hair|baal|lip|lips|honth|scalp|sunscreen|sun protection|beauty)\b/.test(normalized);
 
   if (hasBeauty) {
     return false;
@@ -452,9 +561,9 @@ export function getConcernCategoriesFromText(text: string): ConcernCategory[] {
   const normalized = normalizeText(text);
 
   if (categories.size === 0) {
-    if (/(hair|scalp)/.test(normalized)) categories.add("hair");
-    if (/(lip|lips)/.test(normalized)) categories.add("lips");
-    if (/(skin|face|sun|sunscreen|spf)/.test(normalized)) categories.add("skin");
+    if (/(hair|scalp|baal|bal|jhad|girna)/.test(normalized)) categories.add("hair");
+    if (/(lip|lips|honth|hontho)/.test(normalized)) categories.add("lips");
+    if (/(skin|face|sun|sunscreen|spf|under arm|underarm|baby|baby skin)/.test(normalized)) categories.add("skin");
   }
 
   if (categories.size === 0) {

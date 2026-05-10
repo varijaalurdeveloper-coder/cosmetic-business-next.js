@@ -46,9 +46,14 @@ function normalizeCategory(category: string) {
 }
 
 function normalizeProductConcernKeywords(product: Product): string[] {
+  const textKeywords = getConcernKeywordsFromText(
+    [product.name, product.description, ...(product.tags ?? [])].join(" ")
+  );
+
   const rawKeywords = [
     ...(product.concernKeywords ?? []),
     ...(product.concerns ?? []),
+    ...textKeywords,
   ];
 
   return Array.from(
@@ -80,9 +85,20 @@ function isFaceProduct(product: Product) {
   return faceProductRegex.test(text);
 }
 
-function calculateProductScore(productKeywords: string[], userKeywords: string[]) {
+function calculateProductScore(
+  product: Product,
+  productKeywords: string[],
+  userKeywords: string[]
+) {
   let score = 0;
   const matchedRoots = new Set<string>();
+  const productText = [
+    product.name,
+    product.description,
+    ...(product.tags ?? []),
+  ]
+    .join(" ")
+    .toLowerCase();
 
   for (const userKeyword of userKeywords) {
     const userRoot = getConcernRoot(userKeyword) ?? userKeyword;
@@ -90,7 +106,7 @@ function calculateProductScore(productKeywords: string[], userKeywords: string[]
     const strongMatch = productKeywords.some(
       (keyword) => getConcernRoot(keyword) === userRoot
     );
-    const secondaryMatch = productKeywords.some(
+    const categoryMatch = productKeywords.some(
       (keyword) =>
         getConcernCategory(keyword) !== null &&
         getConcernCategory(keyword) === getConcernCategory(userKeyword)
@@ -103,14 +119,26 @@ function calculateProductScore(productKeywords: string[], userKeywords: string[]
     }
 
     if (strongMatch) {
-      score += 7;
+      score += 8;
       matchedRoots.add(userRoot);
       continue;
     }
 
-    if (secondaryMatch) {
-      score += 3;
+    if (categoryMatch) {
+      score += 4;
     }
+
+    if (productText.includes(userRoot)) {
+      score += 2;
+    }
+  }
+
+  if (matchedRoots.size > 1) {
+    score += 2;
+  }
+
+  if (product.priority) {
+    score += Math.min(3, Math.max(0, product.priority - 2));
   }
 
   return { score, matchedRoots: Array.from(matchedRoots) };
@@ -182,6 +210,10 @@ function selectRecommendedProducts(
   const added = new Set<string>();
   const buckets = new Map<string, { product: Product; score: number }[]>();
 
+  const desiredCategories = categories.length
+    ? Array.from(new Set(categories.map(normalizeCategory)))
+    : ["skin", "hair", "lips"];
+
   for (const item of scoredItems) {
     const category = normalizeCategory(item.product.category);
     if (!buckets.has(category)) buckets.set(category, []);
@@ -192,7 +224,7 @@ function selectRecommendedProducts(
     bucket.sort((a, b) => b.score - a.score);
   }
 
-  for (const category of categories) {
+  for (const category of desiredCategories) {
     const bucket = buckets.get(category);
     if (bucket) {
       const next = bucket.find((item) => !added.has(item.product.id));
@@ -204,7 +236,7 @@ function selectRecommendedProducts(
   }
 
   for (const item of scoredItems) {
-    if (results.length >= 5) break;
+    if (results.length >= 6) break;
     if (!added.has(item.product.id)) {
       results.push(item.product);
       added.add(item.product.id);
@@ -218,9 +250,37 @@ function filterProducts(
   products: Product[],
   categories: string[],
   userKeywords: string[],
-  faceConcern: boolean
+  faceConcern: boolean,
+  rawMessage: string
 ) {
+  const normalizedMessage = rawMessage
+    .toLowerCase()
+    .replace(/[-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
   const requiredRoots = getConcernRootsFromKeywords(userKeywords);
+  const hasBabySignal = /\b(baby|infant|toddler)\b/.test(normalizedMessage);
+  const hasUnderarmSignal = /\b(under arm|underarm)\b/.test(normalizedMessage);
+  const acneRoot = userKeywords.some(
+    (keyword) => getConcernRoot(keyword) === "acne"
+  );
+  const pigmentSignal = userKeywords.some((keyword) => {
+    const root = getConcernRoot(keyword);
+    return [
+      "pigmentation",
+      "tan",
+      "dark circles",
+      "skin brightening",
+      "uneven skin tone",
+      "dull skin",
+      "dark spots",
+      "underarm darkness",
+    ].includes(root ?? "");
+  });
+  const hasDandruffRoot = userKeywords.some(
+    (keyword) => getConcernRoot(keyword) === "dandruff"
+  );
 
   const scored = products
     .map((product) => {
@@ -233,11 +293,33 @@ function filterProducts(
         return null;
       }
 
+      if (!hasBabySignal && /baby/i.test(product.name)) {
+        return null;
+      }
+
+      if (hasDandruffRoot && productCategory === "lips") {
+        return null;
+      }
+
+      if (
+        acneRoot && !pigmentSignal &&
+        /skin whitening cream|natural skin brightening cream|under arm skin whitening balm/i.test(
+          product.name
+        )
+      ) {
+        return null;
+      }
+
+      if (!hasUnderarmSignal && /under arm|underarm/i.test(product.name)) {
+        return null;
+      }
+
       if (faceConcern && productCategory === "skin" && !isFaceProduct(product)) {
         return null;
       }
 
       const { score, matchedRoots } = calculateProductScore(
+        product,
         productKeywords,
         userKeywords
       );
@@ -249,7 +331,7 @@ function filterProducts(
         return null;
       }
 
-      const scoreWithPriority = score + (product.priority ?? 0);
+      const scoreWithPriority = score;
       if (scoreWithPriority < 7) return null;
 
       return { product, score: scoreWithPriority };
@@ -257,7 +339,19 @@ function filterProducts(
     .filter((item): item is { product: Product; score: number } => Boolean(item))
     .sort((a, b) => b.score - a.score);
 
-  return selectRecommendedProducts(scored, categories);
+  const confidenceScore = Math.min(
+    1,
+    Math.max(
+      0.25,
+      ((scored[0]?.score ?? 0) / 18) * 0.9 +
+        Math.min(0.15, userKeywords.length * 0.03)
+    )
+  );
+
+  return {
+    products: selectRecommendedProducts(scored, categories),
+    confidenceScore: Number(confidenceScore.toFixed(2)),
+  };
 }
 
 async function generateAIReply(
@@ -336,11 +430,12 @@ export async function POST(request: NextRequest) {
     const categories = getConcernCategoriesFromText(normalizedMessage);
     const faceConcern = isFaceConcern(normalizedMessage, userKeywords);
     const allProducts = await fetchAllProducts();
-    const filteredProducts = filterProducts(
+    const { products: filteredProducts, confidenceScore } = filterProducts(
       allProducts,
       categories,
       userKeywords,
-      faceConcern
+      faceConcern,
+      normalizedMessage
     );
 
     if (filteredProducts.length === 0) {
@@ -348,6 +443,10 @@ export async function POST(request: NextRequest) {
         message:
           "No products are currently available for your concern. Please check our products page for similar products.\n/products",
         products: [],
+        detectedConcerns: getConcernRootsFromKeywords(userKeywords),
+        recommendedProducts: [],
+        matchedKeywords: userKeywords,
+        confidenceScore: 0,
       });
     }
 
@@ -360,6 +459,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: `${aiReply}\n\n👉 Tap “Add to Cart” or contact us on WhatsApp 😊`,
       products: filteredProducts,
+      detectedConcerns: getConcernRootsFromKeywords(userKeywords),
+      recommendedProducts: filteredProducts.map((product) => product.name),
+      matchedKeywords: userKeywords,
+      confidenceScore,
     });
   } catch (err) {
     console.error("AI CHAT ERROR:", err);
