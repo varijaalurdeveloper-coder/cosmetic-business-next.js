@@ -131,15 +131,25 @@ export async function GET(req: Request) {
         id: item.id,
         productId: item.product_id,
         name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        itemTotal: item.price * item.quantity, // 🔥 added
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity) || 0,
+        itemTotal: (Number(item.price) || 0) * (Number(item.quantity) || 0),
       }));
 
       const totalQuantity = items.reduce(
         (sum: number, item: any) => sum + item.quantity,
         0
       );
+
+      const computedItemsTotal = items.reduce(
+        (sum: number, item: any) => sum + item.itemTotal,
+        0
+      );
+
+      const rawTotal = Number(order.total);
+      const normalizedTotal = Number.isFinite(rawTotal)
+        ? rawTotal
+        : computedItemsTotal;
 
       const date = new Date(order.created_at);
 
@@ -153,7 +163,8 @@ export async function GET(req: Request) {
         notes: order.notes,
 
         // 🔥 Analytics fields
-        totalAmount: order.total,
+        total: normalizedTotal,
+        totalAmount: normalizedTotal,
         status: order.status,
         createdAt: order.created_at,
 

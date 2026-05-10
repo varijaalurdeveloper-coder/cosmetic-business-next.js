@@ -37,7 +37,7 @@ interface AdminOrder {
   email: string;
   phone: string;
   address: string;
-  total: number;
+  total?: number | string;
   status: "pending" | "confirmed" | "shipped" | "delivered";
   createdAt: string;
   items: OrderItem[];
@@ -88,6 +88,18 @@ export function AdminOrders() {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const getOrderTotal = (order: AdminOrder) => {
+    const rawTotal = Number(order.total);
+    if (Number.isFinite(rawTotal) && rawTotal >= 0) {
+      return rawTotal;
+    }
+
+    return order.items.reduce(
+      (sum, item) => sum + Number(item.price) * Number(item.quantity),
+      0
+    );
   };
 
   // ✅ UPDATE STATUS
@@ -223,7 +235,7 @@ export function AdminOrders() {
                     </TableCell>
 
                     <TableCell className="font-semibold">
-                      ₹{Number(order.total).toFixed(2)}
+                      ₹{getOrderTotal(order).toFixed(2)}
                     </TableCell>
 
                     <TableCell>

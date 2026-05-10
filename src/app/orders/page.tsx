@@ -25,7 +25,8 @@ interface Order {
   email: string;
   phone: string;
   address: string;
-  total: number;
+  total?: number | string;
+  totalAmount?: number;
   status: "pending" | "confirmed" | "shipped" | "delivered";
   createdAt: string;
   items: OrderItem[];
@@ -92,6 +93,18 @@ export default function OrdersPage() {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const getOrderTotal = (order: Order) => {
+    const fromApi = Number(order.total ?? order.totalAmount ?? NaN);
+    if (Number.isFinite(fromApi) && fromApi >= 0) {
+      return fromApi;
+    }
+
+    return order.items.reduce(
+      (sum, item) => sum + Number(item.price) * Number(item.quantity),
+      0
+    );
   };
 
   if (!user) {
@@ -187,7 +200,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold">
-                      ₹{Number(order.total).toFixed(2)}
+                      ₹{getOrderTotal(order).toFixed(2)}
                     </p>
                   </div>
                 </div>
