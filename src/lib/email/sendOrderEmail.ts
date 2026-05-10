@@ -38,10 +38,7 @@ export async function sendOrderEmail(order: any) {
 
     const tax = Number(order.totals?.tax || 0);
     const shipping = Number(order.totals?.shipping || 0);
-    const total =
-      typeof order.totals?.total !== "undefined"
-        ? Number(order.totals.total)
-        : subtotal + tax + shipping;
+    const totalAmount = subtotal;
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222; max-width: 600px;">
@@ -68,8 +65,8 @@ export async function sendOrderEmail(order: any) {
         <div style="margin-top: 20px;">
           <p><strong>Subtotal:</strong> ₹${subtotal.toFixed(2)}</p>
           <p><strong>Tax:</strong> ₹${tax.toFixed(2)}</p>
-          <p><strong>Shipping:</strong> ${shipping === 0 ? "FREE" : `₹${shipping.toFixed(2)}`}</p>
-          <p style="font-size: 18px; margin-top: 10px;"><strong>Total Amount:</strong> ₹${total.toFixed(2)}</p>
+          <p><strong>Shipping:</strong> charges may apply</p>
+          <p style="font-size: 18px; margin-top: 10px;"><strong>Total Amount:</strong> ₹${totalAmount.toFixed(2)}</p>
         </div>
 
         <p><strong>Order Date:</strong> ${orderDate}</p>

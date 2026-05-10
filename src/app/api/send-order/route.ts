@@ -48,15 +48,18 @@ export async function POST(req: NextRequest) {
         phone,
         address,
         items,
-        total,
       } = body;
 
-      if (!orderId || !customerName || !email || !items || !total) {
+      if (!orderId || !customerName || !email || !items) {
         return NextResponse.json(
           { error: "Missing order data" },
           { status: 400 }
         );
       }
+
+      const subtotal = (items || []).reduce((sum: number, item: any) => {
+        return sum + Number(item.price || 0) * Number(item.quantity || 0);
+      }, 0);
 
       const itemsHtml = items
         .map(
@@ -80,7 +83,11 @@ export async function POST(req: NextRequest) {
         <h3>Items:</h3>
         <ul>${itemsHtml}</ul>
 
-        <h3>Total: ₹${total}</h3>
+        <div>
+          <p><strong>Subtotal:</strong> ₹${subtotal.toFixed(2)}</p>
+          <p><strong>Shipping:</strong> charges may apply</p>
+          <p><strong>Total:</strong> ₹${subtotal.toFixed(2)}</p>
+        </div>
       `;
     }
 
