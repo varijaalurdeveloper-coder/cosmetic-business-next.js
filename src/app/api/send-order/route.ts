@@ -12,50 +12,77 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    const businessEmail =
+      process.env.MAILING_LIST_EMAIL || "rimaorganiccosmetics@gmail.com";
 
-    const {
-      orderId,
-      customerName,
-      email,
-      phone,
-      address,
-      items,
-      total,
-    } = body;
+    const isContactMessage = body?.type === "contact";
 
-    if (!orderId || !customerName || !email || !items || !total) {
-      return NextResponse.json(
-        { error: "Missing order data" },
-        { status: 400 }
-      );
+    let html: string;
+    let subject: string;
+
+    if (isContactMessage) {
+      const { name, email, phone, subject: contactSubject, message } = body;
+
+      if (!name || !email || !message) {
+        return NextResponse.json(
+          { error: "Missing contact data" },
+          { status: 400 }
+        );
+      }
+
+      subject = `New Contact Message from ${name}`;
+      html = `
+        <h2>📬 New Contact Message</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone || "N/A"}</p>
+        <p><strong>Subject:</strong> ${contactSubject || "General inquiry"}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+      `;
+    } else {
+      const {
+        orderId,
+        customerName,
+        email,
+        phone,
+        address,
+        items,
+        total,
+      } = body;
+
+      if (!orderId || !customerName || !email || !items || !total) {
+        return NextResponse.json(
+          { error: "Missing order data" },
+          { status: 400 }
+        );
+      }
+
+      const itemsHtml = items
+        .map(
+          (item: any) => `
+            <li>
+              ${item.name} - ₹${item.price} × ${item.quantity}
+            </li>
+          `
+        )
+        .join("");
+
+      subject = `New Order #${orderId}`;
+      html = `
+        <h2>🛒 New Order Received</h2>
+        <p><strong>Order ID:</strong> ${orderId}</p>
+        <p><strong>Customer:</strong> ${customerName}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
+        <p><strong>Address:</strong> ${address}</p>
+
+        <h3>Items:</h3>
+        <ul>${itemsHtml}</ul>
+
+        <h3>Total: ₹${total}</h3>
+      `;
     }
-
-    /**
-     * ✅ Build email content
-     */
-    const itemsHtml = items
-      .map(
-        (item: any) => `
-        <li>
-          ${item.name} - ₹${item.price} × ${item.quantity}
-        </li>
-      `
-      )
-      .join("");
-
-    const html = `
-      <h2>🛒 New Order Received</h2>
-      <p><strong>Order ID:</strong> ${orderId}</p>
-      <p><strong>Customer:</strong> ${customerName}</p>
-      <p><strong>Email:</strong> ${email}</p>
-      <p><strong>Phone:</strong> ${phone}</p>
-      <p><strong>Address:</strong> ${address}</p>
-
-      <h3>Items:</h3>
-      <ul>${itemsHtml}</ul>
-
-      <h3>Total: ₹${total}</h3>
-    `;
 
     /**
      * ✅ Send email via Resend
@@ -68,8 +95,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         from: "Rima Cosmetics <onboarding@resend.dev>", // ✅ IMPORTANT
-        to: ["rimaorganiccosmetics@gmail.com"], // ✅ your email
-        subject: `New Order #${orderId}`,
+        to: [businessEmail],
+        subject,
         html,
       }),
     });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { sendOrderEmail } from "@/lib/email/sendOrderEmail";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -339,30 +340,31 @@ export async function POST(req: Request) {
      * ✅ STEP 3: Trigger email
      */
     try {
-      console.log("📧 Calling /api/send-order...");
+      console.log("📧 Sending order email via helper...");
 
-      const emailRes = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/api/send-order`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId,
-            customerName,
-            email,
-            phone,
-            address,
-            items: normalizedItems,
-            total,
-          }),
-        }
-      );
+      const emailResult = await sendOrderEmail({
+        id: orderId,
+        customer: {
+          firstName: customerName,
+          email,
+          phone,
+          address,
+        },
+        items: normalizedItems.map((item: any) => ({
+          product: {
+            name: item.name,
+            price: item.price,
+          },
+          quantity: item.quantity,
+        })),
+        totals: {
+          total,
+        },
+      });
 
-      const emailData = await emailRes.json();
-
-      console.log("📧 Email response:", emailData);
+      console.log("📧 Email helper response:", emailResult);
     } catch (err) {
-      console.error("❌ Email call failed:", err);
+      console.error("❌ Email helper failed:", err);
     }
 
     console.log("✅ Order created successfully:", orderId);
