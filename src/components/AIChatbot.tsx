@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/providers/CartProvider";
 import { useRouter } from "next/navigation";
-import { Send, X, MessageCircle, Check } from "lucide-react";
+import { Send, X, BotMessageSquare, Sparkles, Check } from "lucide-react";
 import Image from "next/image";
 import type { ProductCategory } from "@/types";
 
@@ -157,19 +157,31 @@ export default function AIChatbot() {
       {/* Floating Button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="h-14 w-14 rounded-full bg-emerald-600 hover:bg-emerald-700 shadow-lg"
+        aria-label={
+          isOpen
+            ? "Close AI skin advisor chat"
+            : "Open AI skin advisor chat"
+        }
+        aria-expanded={isOpen}
+        className="relative inline-flex h-16 w-16 rounded-full bg-gradient-to-br from-emerald-500 via-emerald-600 to-lime-500 text-white shadow-[0_24px_60px_-32px_rgba(16,185,129,0.9)] ring-1 ring-emerald-200/70 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_80px_-34px_rgba(16,185,129,0.95)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-4 focus-visible:ring-offset-white hover:scale-[1.02] overflow-visible"
         size="icon"
       >
-        {isOpen ? (
-          <X className="h-6 w-6 text-white" />
-        ) : (
-          <MessageCircle className="h-6 w-6 text-white" />
-        )}
+        <span className="absolute inset-0 rounded-full bg-emerald-300/30 blur-2xl opacity-80 animate-pulse" />
+        <span className="absolute -top-1 -left-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-emerald-100 shadow-md">
+          <Sparkles className="h-3 w-3" />
+        </span>
+        <span className="relative z-10 flex h-full w-full items-center justify-center">
+          {isOpen ? (
+            <X className="h-6 w-6 text-white" />
+          ) : (
+            <BotMessageSquare className="h-6 w-6 text-white" />
+          )}
+        </span>
       </Button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="absolute bottom-20 right-0 w-[380px] h-[600px] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
+        <div className="absolute bottom-20 left-full ml-3 w-[min(92vw,420px)] max-w-[420px] max-h-[80vh] h-[min(78vh,640px)] bg-white rounded-3xl shadow-2xl border border-emerald-100 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-emerald-600 p-4">
             <h3 className="text-white font-semibold">Beauty Advisor</h3>

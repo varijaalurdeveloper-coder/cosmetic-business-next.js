@@ -30,9 +30,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Footer />
 
             {/* ✅ Floating Action Buttons (Single Source of Truth) */}
-            <div className="fixed bottom-6 right-6 z-50 flex items-end gap-3">
-              <WhatsAppButton />
+            <div className="fixed bottom-6 left-6 z-50">
               <AIChatbot />
+            </div>
+            <div className="fixed bottom-6 right-6 z-50">
+              <WhatsAppButton />
             </div>
 
           </div>
