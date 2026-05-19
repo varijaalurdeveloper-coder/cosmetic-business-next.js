@@ -444,8 +444,20 @@ export function getKeywordsByCategory(category: ConcernCategory): string[] {
     .flatMap((group) => group.keywords);
 }
 
+function rewriteConcernPhrases(text: string) {
+  return text
+    .replace(/\b(lips? are dry|dry lips?|dry lip|lip is dry|lips? dry|dry lips?)\b/g, "dry lips")
+    .replace(/\b(chapped lips?|chapped lip)\b/g, "chapped lips")
+    .replace(/\b(dark lips?|pigmented lips|uneven lip tone|lip discoloration)\b/g, "dark lips")
+    .replace(/\b(lip hydration|lip nourishment|soft lips?|smooth lips?)\b/g, "soft lips")
+    .replace(/\b(pink lips?|lip lightening|natural lip color)\b/g, "pink lips")
+    .replace(/\b(spf lip balm|sun protection for lips|healing lips)\b/g, "spf lip balm")
+    .replace(/\b(lips?|lip)\b/g, "lips");
+}
+
 export function getConcernKeywordsFromText(text: string): string[] {
-  const normalizedText = normalizeText(text);
+  let normalizedText = normalizeText(text);
+  normalizedText = rewriteConcernPhrases(normalizedText);
 
   const matched = new Set<string>();
 
