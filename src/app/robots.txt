@@ -51,6 +51,6 @@ export default function robots(): MetadataRoute.Robots {
         crawlDelay: 2,
       },
     ],
-    sitemap: "https://rimacosmetics.vercel.app/sitemap.xml",
+    sitemap: "https://rimaorganiccosmetics.vercel.app/sitemap.xml",
   };
 }

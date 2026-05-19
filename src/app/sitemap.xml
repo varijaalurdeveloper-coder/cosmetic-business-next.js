@@ -1,78 +1,58 @@
-import type { MetadataRoute } from "next";
+﻿import type { MetadataRoute } from "next";
+import { products } from "@/lib/data/products";
+import { allBlogPostsSorted } from "@/lib/data/blog-posts-complete";
+import { SITE_URL } from "@/lib/seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://rimacosmetics.vercel.app";
+  const baseUrl = SITE_URL;
+  const now = new Date();
 
-  return [
+  const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/`,
-      lastModified: new Date("2025-11-05"),
+      lastModified: now,
       changeFrequency: "daily",
       priority: 1.0,
     },
     {
       url: `${baseUrl}/about`,
-      lastModified: new Date("2025-11-05"),
+      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: `${baseUrl}/products`,
-      lastModified: new Date("2025-11-05"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/blogs`,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
       url: `${baseUrl}/contact`,
-      lastModified: new Date("2025-11-05"),
+      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
     },
-    {
-      url: `${baseUrl}/cart`,
-      lastModified: new Date("2025-11-05"),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/login`,
-      lastModified: new Date("2025-11-05"),
-      changeFrequency: "yearly",
-      priority: 0.5,
-    },
-
-    // Product Categories
-    {
-      url: `${baseUrl}/products?category=hair-care`,
-      lastModified: new Date("2025-11-05"),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/products?category=skin-care`,
-      lastModified: new Date("2025-11-05"),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/products?category=soap`,
-      lastModified: new Date("2025-11-05"),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/products?category=lip-care`,
-      lastModified: new Date("2025-11-05"),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-
-    // Blog
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date("2026-01-28"),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
   ];
+
+  const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
+    url: `${baseUrl}/products/${product.id}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  const blogRoutes: MetadataRoute.Sitemap = allBlogPostsSorted.map((post) => ({
+    url: `${baseUrl}/blogs/${post.slug}`,
+    lastModified: new Date(post.publishDate),
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...productRoutes, ...blogRoutes];
 }
