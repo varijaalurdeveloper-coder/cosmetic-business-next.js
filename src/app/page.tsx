@@ -104,6 +104,43 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Why Choose Us Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-600">
+                Why Choose Rima Cosmetics?
+              </p>
+              <h2 className="mt-4 mb-6 max-w-xl">
+                At Rima Cosmetics, we believe in the power of nature.
+              </h2>
+              <p className="mb-6 text-gray-600">
+                Our products are carefully handcrafted using 100% organic ingredients, ensuring that you get the best for your skin.
+              </p>
+              <p className="mb-8 text-gray-600">
+                Every product is made with love and care by our founder Mounica MK, who is passionate about creating safe, effective, and natural beauty solutions.
+              </p>
+              <Link href="/about">
+                <Button size="lg" className="bg-green-600 hover:bg-green-700">
+                  Learn More About Us
+                </Button>
+              </Link>
+            </div>
+
+            <div className="overflow-hidden rounded-[32px] bg-gray-100">
+              <ImageWithFallback
+                src="https://images.unsplash.com/photo-1634906345513-3fef37b28ae6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800"
+                alt="Handmade organic soap"
+                className="h-full w-full object-cover"
+                width={1200}
+                height={900}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Products Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
