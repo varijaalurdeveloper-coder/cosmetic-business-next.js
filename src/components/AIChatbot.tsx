@@ -140,7 +140,7 @@ export default function AIChatbot() {
 
   // ✅ WHATSAPP
   const handleChatWithOwner = (product?: Product) => {
-    const phoneNumber = "918939996640";
+    const phoneNumber = "919629354868";
 
     const message = product
       ? `Hi! I'm interested in "${product.name}". Can you share more details?`

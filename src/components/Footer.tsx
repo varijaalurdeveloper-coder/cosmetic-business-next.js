@@ -18,16 +18,16 @@ export function Footer() {
             <div className="space-y-2 text-gray-400">
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
-                <span>8939996640</span>
+                <span>9629354868</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
-                <span>rimacosmetics@gmail.com</span>
+                <span>rimaorganiccosmetics@gmail.com</span>
               </div>
               <div className="flex items-start space-x-2">
                 <MapPin className="h-4 w-4 mt-1" />
                 <span>
-                  A block G-3, Tejas Lakeview apartment,<br />
+                  Tejas Lakeview apartments,<br />
                   Manthopo Salai, Siruseri,<br />
                   Chennai, Tamil Nadu
                 </span>
