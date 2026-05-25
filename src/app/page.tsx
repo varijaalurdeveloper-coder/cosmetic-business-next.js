@@ -1,216 +1,44 @@
-"use client";
+﻿import type { Metadata } from "next";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
+import HomePageClient from "./HomePageClient";
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "../components/ui/carousel";
-import { useCart } from "../providers/CartProvider";
-import { ShoppingCart } from "lucide-react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { toast } from "sonner";
-import { Product } from "@/types";
+  DEFAULT_DESCRIPTION,
+  DEFAULT_KEYWORDS,
+  DEFAULT_OG_IMAGE,
+  DEFAULT_TITLE,
+  SITE_URL,
+} from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "Rima Cosmetics | Organic Handmade Cosmetics",
+  description: DEFAULT_DESCRIPTION,
+  keywords: DEFAULT_KEYWORDS,
+  openGraph: {
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: new URL("/", SITE_URL),
+    siteName: "Rima Cosmetics",
+    type: "website",
+    images: [
+      {
+        url: DEFAULT_OG_IMAGE,
+        alt: DEFAULT_TITLE,
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
+  },
+  alternates: {
+    canonical: new URL("/", SITE_URL),
+  },
+};
 
 export default function HomePage() {
-  const { addToCart } = useCart();
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // ✅ FETCH PRODUCTS (static + admin via API)
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        console.log("📡 Fetching homepage products...");
-
-        const res = await fetch("/api/products", { cache: "no-store" });
-        const data = await res.json();
-
-        console.log("✅ Homepage products:", data);
-
-        setProducts(data.products || []);
-      } catch (err) {
-        console.error("❌ Fetch error:", err);
-        toast.error("Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  const handleAddToCart = (product: Product) => {
-    addToCart(product);
-    toast.success(`${product.name} added to cart!`);
-  };
-
-  // ✅ OPTIONAL: show only first 8 products on homepage
-  const displayProducts = products;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading products...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen">
-      {/* Hero Section (unchanged) */}
-      <section className="relative h-[600px] bg-gradient-to-r from-green-50 to-emerald-50">
-        <div className="absolute inset-0">
-          <ImageWithFallback
-            src="https://images.unsplash.com/photo-1722934797829-5c60280d05af?crop=entropy&cs=tinysrgb&fit=max&fm=webp&q=85&w=1920"
-            alt="Organic Cosmetics"
-            className="w-full h-full object-cover"
-            width={1920}
-            height={1200}
-          />
-          <div className="absolute inset-0 bg-black/40"></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="max-w-2xl">
-            <h1 className="mb-6 text-white drop-shadow-lg">
-              100% Organic Handmade Cosmetics
-            </h1>
-            <p className="mb-8 text-white drop-shadow-md text-lg">
-              Discover the power of nature with our carefully crafted organic
-              beauty products.
-            </p>
-
-            <div className="flex space-x-4">
-              <Link href="/products">
-                <Button size="lg" className="bg-green-600 hover:bg-green-700">
-                  Shop Now
-                </Button>
-              </Link>
-
-              <Link href="/about">
-                <Button size="lg" variant="outline">
-                  Learn More
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose Us Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-600">
-                Why Choose Rima Cosmetics?
-              </p>
-              <h2 className="mt-4 mb-6 max-w-xl">
-                At Rima Cosmetics, we believe in the power of nature.
-              </h2>
-              <p className="mb-6 text-gray-600">
-                Our products are carefully handcrafted using 100% organic ingredients, ensuring that you get the best for your skin.
-              </p>
-              <p className="mb-8 text-gray-600">
-                Every product is made with love and care by our founder Mounica MK, who is passionate about creating safe, effective, and natural beauty solutions.
-              </p>
-              <Link href="/about">
-                <Button size="lg" className="bg-green-600 hover:bg-green-700">
-                  Learn More About Us
-                </Button>
-              </Link>
-            </div>
-
-            <div className="overflow-hidden rounded-[32px] bg-gray-100">
-              <ImageWithFallback
-                src="https://images.unsplash.com/photo-1634906345513-3fef37b28ae6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800"
-                alt="Handmade organic soap"
-                className="h-full w-full object-cover"
-                width={1200}
-                height={900}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Products Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="mb-4">Our Products</h2>
-            <p className="text-gray-600">
-              Explore our range of organic cosmetic products
-            </p>
-          </div>
-
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent>
-              {displayProducts.map((product) => (
-                <CarouselItem
-                  key={product.id}
-                  className="md:basis-1/2 lg:basis-1/4"
-                >
-                  <Card className="h-full hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="aspect-square mb-4 overflow-hidden rounded-lg bg-gray-100">
-                        <ImageWithFallback
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-contain hover:scale-105 transition-transform"
-                          width={400}
-                          height={400}
-                        />
-                      </div>
-
-                      <h3 className="mb-2">{product.name}</h3>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-green-600">
-                          ₹{product.price}
-                        </span>
-
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddToCart(product)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
-
-          <div className="text-center mt-8">
-            <Link href="/products">
-              <Button size="lg" variant="outline">
-                View All Products
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+  return <HomePageClient />;
 }
