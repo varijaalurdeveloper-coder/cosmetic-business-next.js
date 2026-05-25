@@ -44,11 +44,11 @@ export function Navbar() {
     <nav className="sticky top-0 z-40 border-b bg-white shadow-sm">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-3">
-          <Link href="/" className="flex min-w-0 items-center space-x-2">
+          <Link href="/" className="flex min-w-0 items-center space-x-3">
             <img
               src="/assets/RimaCosmeticsLogo.svg"
               alt="Rima Cosmetics Logo"
-              className="h-10 w-10 shrink-0"
+              className="h-14 w-14 rounded-full border border-emerald-200/80 bg-white/90 object-contain shadow-sm shrink-0"
             />
             <div className="min-w-0 flex flex-col">
               <span className="truncate text-sm font-semibold text-gray-900 sm:text-base">

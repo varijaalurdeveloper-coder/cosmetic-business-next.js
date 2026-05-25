@@ -181,7 +181,7 @@ export default function AIChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="absolute bottom-20 left-full ml-3 w-[min(92vw,420px)] max-w-[420px] max-h-[80vh] h-[min(78vh,640px)] bg-white rounded-3xl shadow-2xl border border-emerald-100 flex flex-col overflow-hidden">
+        <div className="absolute bottom-20 left-0 sm:left-full sm:ml-3 w-[min(92vw,420px)] max-w-[420px] max-h-[80vh] h-[min(78vh,640px)] bg-white rounded-3xl shadow-2xl border border-emerald-100 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-emerald-600 p-4">
             <h3 className="text-white font-semibold">Beauty Advisor</h3>
