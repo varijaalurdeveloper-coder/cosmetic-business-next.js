@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://rimaorganiccosmetics.vercel.app
+
+# Sitemaps
+Sitemap: https://rimaorganiccosmetics.vercel.app/sitemap.xml
