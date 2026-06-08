@@ -16,6 +16,7 @@ import {
   buildKnowledgePromptContext,
   buildKnowledgeSourceReferences,
 } from "@/lib/ai/rag";
+import type { KnowledgeDocument } from "@/lib/ai/knowledge-base";
 
 interface Product {
   id: string;
@@ -364,7 +365,7 @@ async function generateAIReply(
   userMessage: string,
   userKeywords: string[],
   products: Product[],
-  relevantDocs: { collection: string; title: string; content: string }[]
+  relevantDocs: KnowledgeDocument[]
 ) {
   try {
     const productList = products
