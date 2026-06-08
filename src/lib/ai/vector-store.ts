@@ -31,7 +31,7 @@ async function syncKnowledgeStore() {
     }))
   );
 
-  await client.from(TABLE_NAME).upsert(rows, { onConflict: ["id"] });
+  await client.from(TABLE_NAME).upsert(rows, { onConflict: "id" });
 }
 
 function parseEmbedding(value: unknown): number[] {
