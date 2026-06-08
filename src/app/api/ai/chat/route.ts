@@ -11,6 +11,11 @@ import {
   hasBeautyIntent,
   isIrrelevantQuery,
 } from "@/lib/ai/concern-keywords";
+import {
+  getRelevantKnowledgeDocuments,
+  buildKnowledgePromptContext,
+  buildKnowledgeSourceReferences,
+} from "@/lib/ai/rag";
 
 interface Product {
   id: string;
@@ -40,8 +45,9 @@ function normalizeCategory(category: string) {
   const c = category.toLowerCase();
   if (c.includes("hair")) return "hair";
   if (c.includes("lip")) return "lips";
-  if (c.includes("skin") || c.includes("face") || c.includes("soap"))
-    return "skin";
+  if (c.includes("soap")) return "soap";
+  if (c.includes("baby")) return "baby-care";
+  if (c.includes("skin") || c.includes("face")) return "skin";
   return "general";
 }
 
@@ -357,30 +363,41 @@ function filterProducts(
 async function generateAIReply(
   userMessage: string,
   userKeywords: string[],
-  products: Product[]
+  products: Product[],
+  relevantDocs: { collection: string; title: string; content: string }[]
 ) {
   try {
     const productList = products
       .map((p, i) => `${i + 1}. ${p.name} (₹${p.price})`)
       .join("\n");
 
-    const prompt = `You are an expert organic beauty advisor.
+    const knowledgeContext = buildKnowledgePromptContext(relevantDocs);
+
+    const prompt = `You are an expert organic beauty advisor for Rima Cosmetics.
+
+Use only the knowledge base context below when answering questions about the business, shipping, returns, owner credentials, or product usage. Avoid hallucination and do not invent product details.
+
+Knowledge base context:
+${knowledgeContext || "No additional context available."}
 
 User concern: ${userMessage}
 Detected concern keywords: ${userKeywords.join(", ") || "none"}
 
-IMPORTANT RULES:
-- ONLY recommend from the provided product list
-- DO NOT add any extra products
-- Keep response short and friendly
-- Explain WHY these products help
-
 Products:
 ${productList}
 
+IMPORTANT RULES:
+- ONLY recommend from the provided product list
+- DO NOT add any extra products
+- Keep response warm, concise, and customer-friendly
+- When the user asks about orders or shipping, refer to the shipping and order guidance only
+- When the user asks about the owner, refer to the owner credentials only
+- If you cannot answer from the provided context, say you do not have that information and suggest contacting the owner
+
 Return format:
-1. Short advice (1-2 lines)
-2. Recommended products list
+1. One or two sentences of personalized beauty advice
+2. A short recommendation list of the products above
+3. A friendly closing sentence that invites the user to add to cart or contact the owner
 `;
 
     const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
@@ -439,21 +456,27 @@ export async function POST(request: NextRequest) {
     );
 
     if (filteredProducts.length === 0) {
+      const relevantDocs = await getRelevantKnowledgeDocuments(normalizedMessage, 3);
+
       return NextResponse.json({
         message:
-          "No products are currently available for your concern. Please check our products page for similar products.\n/products",
+          "Currently this product is unavailable or out of stock. Please contact the business owner directly to enquire about fresh stock availability.",
         products: [],
         detectedConcerns: getConcernRootsFromKeywords(userKeywords),
         recommendedProducts: [],
         matchedKeywords: userKeywords,
         confidenceScore: 0,
+        showContactButton: true,
+        sourceReferences: buildKnowledgeSourceReferences(relevantDocs),
       });
     }
 
+    const relevantDocs = await getRelevantKnowledgeDocuments(normalizedMessage, 4);
     const aiReply = await generateAIReply(
       normalizedMessage,
       userKeywords,
-      filteredProducts
+      filteredProducts,
+      relevantDocs
     );
 
     return NextResponse.json({
@@ -463,6 +486,8 @@ export async function POST(request: NextRequest) {
       recommendedProducts: filteredProducts.map((product) => product.name),
       matchedKeywords: userKeywords,
       confidenceScore,
+      showContactButton: false,
+      sourceReferences: buildKnowledgeSourceReferences(relevantDocs),
     });
   } catch (err) {
     console.error("AI CHAT ERROR:", err);

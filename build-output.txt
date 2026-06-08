@@ -1,0 +1,18 @@
+
+> cosmetic-business-website@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+uncaughtException Error: kill EPERM
+    at ChildProcess.kill (node:internal/child_process:512:26)
+    at ChildProcessWorker.forceExit (C:\Users\varij\Downloads\Cosmetic Business Website (next)\node_modules\next\dist\compiled\jest-worker\index.js:1:12879)
+    at Timeout._onTimeout (C:\Users\varij\Downloads\Cosmetic Business Website (next)\node_modules\next\dist\compiled\jest-worker\index.js:1:8684)
+    at listOnTimeout (node:internal/timers:573:17)
+    at process.processTimers (node:internal/timers:514:7) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'kill'
+}

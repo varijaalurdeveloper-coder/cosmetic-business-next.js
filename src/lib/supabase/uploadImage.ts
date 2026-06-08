@@ -18,11 +18,18 @@ export async function uploadImage(
       return null;
     }
 
-    // Validate file type
-    const validImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!validImageTypes.includes(file.type)) {
-      toast.error("Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.");
+// Validate file type for any image format
+  if (file.type && !file.type.startsWith("image/")) {
+    toast.error("Invalid file type. Please upload an image file.");
+    return null;
+  }
+
+  if (!file.type) {
+    const imageExtensionRegex = /\.(jpe?g|png|webp|gif|svg|bmp|tiff?)$/i;
+    if (!imageExtensionRegex.test(file.name)) {
+      toast.error("Invalid file type. Please upload an image file.");
       return null;
+    }
     }
 
     // Validate file size (max 5MB)

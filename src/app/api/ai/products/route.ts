@@ -24,7 +24,9 @@ function normalizeCategory(category: string) {
   const c = category.toLowerCase();
 
   if (c.includes("hair")) return "hair";
-  if (c.includes("skin") || c.includes("face") || c.includes("soap")) return "skin";
+  if (c.includes("soap")) return "soap";
+  if (c.includes("baby")) return "baby-care";
+  if (c.includes("skin") || c.includes("face")) return "skin";
   if (c.includes("lip")) return "lips";
 
   return "general";

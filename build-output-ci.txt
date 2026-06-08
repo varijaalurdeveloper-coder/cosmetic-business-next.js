@@ -1,0 +1,76 @@
+
+> cosmetic-business-website@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/72) ...
+   Generating static pages (18/72) 
+   Generating static pages (36/72) 
+   Generating static pages (54/72) 
+ ✓ Generating static pages (72/72)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                Size     First Load JS
+┌ ○ /                                      12.4 kB         126 kB
+├ ○ /_not-found                            876 B          88.4 kB
+├ ○ /about                                 2.48 kB        95.3 kB
+├ ○ /admin                                 143 kB          317 kB
+├ ƒ /api/admin/analytics                   0 B                0 B
+├ ƒ /api/admin/create-admin                0 B                0 B
+├ ƒ /api/admin/orders                      0 B                0 B
+├ ƒ /api/admin/orders/[id]                 0 B                0 B
+├ ƒ /api/admin/products                    0 B                0 B
+├ ƒ /api/admin/products/[id]               0 B                0 B
+├ ƒ /api/admin/seed-products               0 B                0 B
+├ ƒ /api/ai/chat                           0 B                0 B
+├ ƒ /api/ai/products                       0 B                0 B
+├ ƒ /api/auth/login                        0 B                0 B
+├ ƒ /api/auth/logout                       0 B                0 B
+├ ƒ /api/auth/me                           0 B                0 B
+├ ƒ /api/auth/signup                       0 B                0 B
+├ ○ /api/health                            0 B                0 B
+├ ƒ /api/orders                            0 B                0 B
+├ ƒ /api/orders/[id]                       0 B                0 B
+├ ○ /api/products                          0 B                0 B
+├ ƒ /api/products/[id]                     0 B                0 B
+├ ƒ /api/send-order                        0 B                0 B
+├ ○ /blogs                                 37.5 kB         146 kB
+├ ● /blogs/[slug]                          5.31 kB         114 kB
+├   ├ /blogs/cosmetic-shop-near-me
+├   ├ /blogs/moisturizing-cream-guide
+├   ├ /blogs/betnovate-cream-alternatives
+├   └ [+11 more paths]
+├ ○ /cart                                  4.67 kB         108 kB
+├ ○ /checkout                              5.48 kB         171 kB
+├ ○ /contact                               4.16 kB         104 kB
+├ ○ /login                                 4.59 kB         171 kB
+├ ○ /order-success                         3.67 kB         107 kB
+├ ○ /orders                                5.74 kB         172 kB
+├ ƒ /orders/[id]                           0 B                0 B
+├ ○ /products                              3.75 kB         109 kB
+├ ● /products/[id]                         3.96 kB         118 kB
+├   ├ /products/1
+├   ├ /products/2
+├   ├ /products/3
+├   └ [+28 more paths]
+├ ○ /robots.txt                            0 B                0 B
+├ ○ /signup                                7.37 kB         116 kB
+└ ○ /sitemap.xml                           0 B                0 B
++ First Load JS shared by all              87.5 kB
+  ├ chunks/117-09f9fe836c8855de.js         31.9 kB
+  ├ chunks/fd9d1056-a4bdc04974d0ea1e.js    53.6 kB
+  └ other shared chunks (total)            2 kB
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses getStaticProps)
+ƒ  (Dynamic)  server-rendered on demand
+

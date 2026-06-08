@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/providers/CartProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Send, X, BotMessageSquare, Sparkles, Check } from "lucide-react";
+import { X, BotMessageSquare, Sparkles, Check, RefreshCcw } from "lucide-react";
 import Image from "next/image";
 import type { ProductCategory } from "@/types";
 
@@ -27,24 +28,32 @@ interface ChatMessage {
   products?: Product[];
 }
 
+const initialMessages: ChatMessage[] = [
+  {
+    id: "welcome",
+    role: "bot",
+    content:
+      "Welcome to Rima Cosmetics 🌿\n\nI am your AI Beauty Advisor and Shopping Assistant.\n\nI can help you discover products for your skin, hair, lips, baby care needs, soaps, and order-related questions.\n\nOur products are handcrafted with care using natural and organic ingredients.\n\nI am M.K. Mounica, certified by NIFDTB Academy in skincare formulation and building safe, organic cosmetics.\n\nWhat would you like to explore today?",
+    products: [],
+  },
+];
+
 export default function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "bot",
-      content:
-        "Hi 👋 Tell me your skin, hair or lip concern and I’ll suggest the best products for you.",
-      products: [],
-    },
-  ]);
-  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [currentPane, setCurrentPane] = useState<
+    "categories" | "subcategories" | "followUp" | "none"
+  >("categories");
+  const [orderStatusMode, setOrderStatusMode] = useState(false);
+  const [showContactButton, setShowContactButton] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { addToCart } = useCart();
+  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,19 +63,188 @@ export default function AIChatbot() {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ QUICK SUGGESTIONS (NEW)
-  const quickSuggestions = [
-    "I have acne",
-    "I have hair fall",
-    "I have dry skin",
-    "I have dandruff",
-    "I have dark spots",
-    "My lips are dry",
+  const categoryButtons = [
+    { label: "Skin Care", value: "skin" },
+    { label: "Hair Care", value: "hair" },
+    { label: "Lip Care", value: "lips" },
+    { label: "Baby Care", value: "baby-care" },
+    { label: "Soaps", value: "soap" },
+    { label: "Order Status", value: "order-status" },
   ];
+
+  const categoryLabels: Record<string, string> = {
+    skin: "Skin Care",
+    hair: "Hair Care",
+    lips: "Lip Care",
+    "baby-care": "Baby Care",
+    soap: "Soaps",
+  };
+
+  const subcategoryOptions: Record<string, string[]> = {
+    skin: [
+      "Dry Skin",
+      "Oily Skin",
+      "Combination Skin",
+      "Sensitive Skin",
+      "Acne & Pimples",
+      "Acne Scars",
+      "Dark Spots / Pigmentation",
+      "Tan Removal",
+      "Dull Skin",
+      "Uneven Skin Tone",
+      "Anti-Aging",
+      "Fine Lines & Wrinkles",
+      "Sun Damage",
+      "Open Pores",
+      "Redness & Irritation",
+    ],
+    hair: [
+      "Hair Fall",
+      "Hair Growth",
+      "Dandruff",
+      "Dry Hair",
+      "Frizzy Hair",
+      "Oily Scalp",
+      "Split Ends",
+      "Damaged Hair",
+      "Thin Hair",
+      "Curly Hair Care",
+      "Scalp Itching",
+      "Hair Strengthening",
+      "Premature Greying",
+      "Hair Shine & Smoothness",
+    ],
+    lips: [
+      "Dry Lips",
+      "Chapped Lips",
+      "Dark Lips",
+      "Lip Pigmentation",
+      "Cracked Lips",
+      "Lip Brightening",
+      "Lip Hydration",
+      "Lip Softening",
+    ],
+    "baby-care": [
+      "Baby Skin Care",
+      "Baby Massage",
+      "Baby Dry Skin",
+      "Baby Rash Care",
+      "Diaper Area Care",
+      "Baby Hair Care",
+      "Baby Bath Care",
+      "Sensitive Baby Skin",
+    ],
+    soap: [
+      "Dry Skin Soaps",
+      "Oily Skin Soaps",
+      "Sensitive Skin Soaps",
+      "Acne Care Soaps",
+      "Charcoal Soaps",
+      "Turmeric Soaps",
+      "Goat Milk Soaps",
+      "Herbal Soaps",
+      "Exfoliating Soaps",
+      "Moisturizing Soaps",
+      "Baby Soaps",
+      "Handmade Organic Soaps",
+    ],
+  };
+
+  const appendMessage = (message: ChatMessage) => {
+    setMessages((prev) => [...prev, message]);
+  };
+
+  const handleCategorySelect = (category: string) => {
+    const label = category === "order-status" ? "Order Status" : categoryLabels[category] ?? category;
+    appendMessage({
+      id: Date.now().toString(),
+      role: "user",
+      content: label,
+    });
+
+    if (category === "order-status") {
+      const reply = user
+        ? "Orders are usually delivered within 5–7 business days. Please visit the My Orders page to track your order status."
+        : "Orders are usually delivered within 5–7 business days. Please login and visit the My Orders page to track your order status.";
+
+      appendMessage({
+        id: (Date.now() + 1).toString(),
+        role: "bot",
+        content: `${reply}\n\nWould you like to explore more products?`,
+      });
+
+      setCurrentPane("followUp");
+      setOrderStatusMode(true);
+      setSelectedCategory(null);
+      setShowContactButton(false);
+      return;
+    }
+
+    const content = `Great! I’m your AI beauty shopping assistant for ${categoryLabels[category]}. Please choose one of these options to explore products.`;
+
+    appendMessage({
+      id: (Date.now() + 1).toString(),
+      role: "bot",
+      content,
+    });
+
+    setSelectedCategory(category);
+    setCurrentPane("subcategories");
+    setOrderStatusMode(false);
+    setShowContactButton(false);
+  };
+
+  const handleSubcategorySelect = (subcategory: string) => {
+    setSelectedCategory(null);
+    setCurrentPane("none");
+    handleSend(subcategory);
+  };
+
+  const handleFollowUpSelection = (answer: "yes" | "no") => {
+    appendMessage({
+      id: Date.now().toString(),
+      role: "user",
+      content: answer === "yes" ? "Yes" : "No",
+    });
+
+    if (answer === "yes") {
+      appendMessage({
+        id: (Date.now() + 1).toString(),
+        role: "bot",
+        content:
+          "Great! What would you like to explore next? Choose a category below.",
+      });
+      setCurrentPane("categories");
+      setOrderStatusMode(false);
+      setShowContactButton(false);
+      return;
+    }
+
+    appendMessage({
+      id: (Date.now() + 1).toString(),
+      role: "bot",
+      content:
+        "Thank you for your interest. You can contact the business owner directly for personalized advice and product recommendations.",
+    });
+
+    setCurrentPane("none");
+    setOrderStatusMode(false);
+    setShowContactButton(true);
+  };
+
+  const resetConversation = () => {
+    setMessages(initialMessages);
+    setCurrentPane("categories");
+    setSelectedCategory(null);
+    setOrderStatusMode(false);
+    setShowContactButton(false);
+    setAddedProductId(null);
+    setIsLoading(false);
+  };
 
   // ✅ SEND MESSAGE
   const handleSend = async (customMessage?: string) => {
-    const finalMessage = (customMessage ?? input).trim();
+    const finalMessage = (customMessage ?? "").trim();
     if (!finalMessage || isLoading) return;
 
     const userMessage: ChatMessage = {
@@ -75,8 +253,9 @@ export default function AIChatbot() {
       content: finalMessage,
     };
 
+    setCurrentPane("none");
+    setShowContactButton(false);
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
     setIsLoading(true);
 
     try {
@@ -88,14 +267,17 @@ export default function AIChatbot() {
 
       const data = await response.json();
 
+      const products = Array.isArray(data?.products) ? data.products : [];
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
         content: data?.message || "Here are some recommendations 😊",
-        products: Array.isArray(data?.products) ? data.products : [],
+        products,
       };
 
       setMessages((prev) => [...prev, botMessage]);
+      setCurrentPane(products.length > 0 ? "followUp" : "none");
+      setShowContactButton(Boolean(data?.showContactButton) || products.length === 0);
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -105,16 +287,9 @@ export default function AIChatbot() {
           content: "⚠️ Something went wrong. Please try again!",
         },
       ]);
+      setShowContactButton(true);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // ✅ ENTER KEY
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSend();
     }
   };
 
@@ -183,30 +358,25 @@ export default function AIChatbot() {
       {isOpen && (
         <div className="absolute bottom-20 left-0 sm:left-full sm:ml-3 w-[min(92vw,420px)] max-w-[420px] max-h-[80vh] h-[min(78vh,640px)] bg-white rounded-3xl shadow-2xl border border-emerald-100 flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="bg-emerald-600 p-4">
-            <h3 className="text-white font-semibold">Beauty Advisor</h3>
-            <p className="text-white/80 text-xs">
-              AI-powered personalized recommendations
-            </p>
+          <div className="bg-emerald-600 p-4 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-white font-semibold">Beauty Advisor</h3>
+              <p className="text-white/80 text-xs">
+                AI-powered personalized recommendations
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={resetConversation}
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/20"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Refresh Chat
+            </button>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            {/* ✅ QUICK SUGGESTIONS UI */}
-            {messages.length === 1 && (
-              <div className="flex flex-wrap gap-2">
-                {quickSuggestions.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSend(q)}
-                    className="text-xs bg-white border px-3 py-1 rounded-full hover:bg-emerald-50"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -247,11 +417,14 @@ export default function AIChatbot() {
                             <p className="text-sm font-medium">
                               {product.name}
                             </p>
-                            <p className="text-emerald-600 text-sm font-semibold">
+                            <p className="text-xs text-gray-500 mt-1 leading-snug">
+                              {product.description}
+                            </p>
+                            <p className="text-emerald-600 text-sm font-semibold mt-2">
                               ₹{product.price}
                             </p>
 
-                            <div className="flex gap-1 mt-1">
+                            <div className="flex gap-1 mt-2">
                               {addedProductId === product.id ? (
                                 <button className="flex-1 bg-green-600 text-white text-xs py-1 rounded">
                                   <Check className="w-3 h-3 inline" /> Added
@@ -285,28 +458,87 @@ export default function AIChatbot() {
               </div>
             ))}
 
+            {currentPane === "categories" && (
+              <div className="rounded-3xl border border-emerald-100 bg-white p-3 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Choose a category to explore personalised beauty products.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {categoryButtons.map((button) => (
+                    <button
+                      key={button.value}
+                      onClick={() => handleCategorySelect(button.value)}
+                      className="rounded-full bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                    >
+                      {button.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentPane === "subcategories" && selectedCategory && (
+              <div className="rounded-3xl border border-emerald-100 bg-white p-3 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Select a concern from {categoryLabels[selectedCategory]}.
+                </p>
+                <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto">
+                  {subcategoryOptions[selectedCategory].map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleSubcategorySelect(option)}
+                      className="rounded-full bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentPane === "followUp" && (
+              <div className="rounded-3xl border border-emerald-100 bg-white p-3 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Do you want to explore more products?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleFollowUpSelection("yes")}
+                    className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => handleFollowUpSelection("no")}
+                    className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            )}
+
             {isLoading && (
               <p className="text-sm text-gray-400 animate-pulse">
                 🤖 Finding best products for you...
               </p>
             )}
 
-            <div ref={messagesEndRef} />
-          </div>
+            {showContactButton && (
+              <div className="rounded-3xl border border-emerald-100 bg-white p-4 text-center">
+                <p className="text-sm text-gray-700 mb-2">
+                  Need more personalized help? Contact the business owner directly.
+                </p>
+                <button
+                  onClick={() => handleChatWithOwner()}
+                  className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  Contact Owner on WhatsApp
+                </button>
+              </div>
+            )}
 
-          {/* Input */}
-          <div className="p-3 border-t bg-white flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Describe your concern..."
-              disabled={isLoading}
-              className="flex-1 px-3 py-2 border rounded-full text-sm"
-            />
-            <Button onClick={() => handleSend()} size="icon">
-              <Send className="w-4 h-4" />
-            </Button>
+            <div ref={messagesEndRef} />
           </div>
         </div>
       )}

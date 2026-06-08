@@ -14,11 +14,13 @@ const jsonError = (message: string, status = 500) =>
 
 function normalizeCategory(category: string) {
   if (!category) return "skin";
-  const c = category.toLowerCase();
+  const c = category.toLowerCase().replace(/\s+/g, "-");
   if (c.includes("hair")) return "hair";
   if (c.includes("lip")) return "lips";
-  if (c.includes("skin") || c.includes("face") || c.includes("soap")) return "skin";
+  if (c.includes("soap")) return "soap";
+  if (c.includes("baby")) return "baby-care";
   if (c === "body") return "body";
+  if (c.includes("skin") || c.includes("face")) return "skin";
   return "skin";
 }
 

@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { uploadImage } from "@/lib/supabase/uploadImage";
-import { concernGroups, type ConcernGroup } from "@/lib/ai/concern-keywords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -34,15 +31,80 @@ interface ProductForm {
   description: string;
   price: string;
   stock: string;
-  image_url: string;
   category: string;
-
-  concernKeywords: string[];
-  skin_type: string;
-  hair_type: string;
-  benefits: string;
+  subcategory: string;
   ingredients: string;
 }
+
+const categorySubcategories: Record<string, string[]> = {
+  skin: [
+    "Dry Skin",
+    "Oily Skin",
+    "Combination Skin",
+    "Sensitive Skin",
+    "Acne & Pimples",
+    "Acne Scars",
+    "Dark Spots / Pigmentation",
+    "Tan Removal",
+    "Dull Skin",
+    "Uneven Skin Tone",
+    "Anti-Aging",
+    "Fine Lines & Wrinkles",
+    "Sun Damage",
+    "Open Pores",
+    "Redness & Irritation",
+  ],
+  hair: [
+    "Hair Fall",
+    "Hair Growth",
+    "Dandruff",
+    "Dry Hair",
+    "Frizzy Hair",
+    "Oily Scalp",
+    "Split Ends",
+    "Damaged Hair",
+    "Thin Hair",
+    "Curly Hair Care",
+    "Scalp Itching",
+    "Hair Strengthening",
+    "Premature Greying",
+    "Hair Shine & Smoothness",
+  ],
+  lips: [
+    "Dry Lips",
+    "Chapped Lips",
+    "Dark Lips",
+    "Lip Pigmentation",
+    "Cracked Lips",
+    "Lip Brightening",
+    "Lip Hydration",
+    "Lip Softening",
+  ],
+  soap: [
+    "Dry Skin Soaps",
+    "Oily Skin Soaps",
+    "Sensitive Skin Soaps",
+    "Acne Care Soaps",
+    "Charcoal Soaps",
+    "Turmeric Soaps",
+    "Goat Milk Soaps",
+    "Herbal Soaps",
+    "Exfoliating Soaps",
+    "Moisturizing Soaps",
+    "Baby Soaps",
+    "Handmade Organic Soaps",
+  ],
+  "baby-care": [
+    "Baby Skin Care",
+    "Baby Massage",
+    "Baby Dry Skin",
+    "Baby Rash Care",
+    "Diaper Area Care",
+    "Baby Hair Care",
+    "Baby Bath Care",
+    "Sensitive Baby Skin",
+  ],
+};
 
 export function AdminProducts() {
   const { isAdmin } = useAuth();
@@ -52,19 +114,14 @@ export function AdminProducts() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [keywordSearch, setKeywordSearch] = useState("");
 
   const [formData, setFormData] = useState<ProductForm>({
     name: "",
     description: "",
     price: "",
     stock: "1",
-    image_url: "",
     category: "skin",
-    concernKeywords: [],
-    skin_type: "",
-    hair_type: "",
-    benefits: "",
+    subcategory: categorySubcategories.skin[0],
     ingredients: "",
   });
 
@@ -102,37 +159,23 @@ export function AdminProducts() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      if (name === "category") {
+        return {
+          ...prev,
+          category: value,
+          subcategory: categorySubcategories[value]?.[0] || "",
+        };
+      }
+
+      return { ...prev, [name]: value };
+    });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSelectedFile(file);
-  };
-
-  const filteredKeywordGroups = useMemo(() => {
-    const query = keywordSearch.toLowerCase().trim();
-
-    return concernGroups
-      .map((group) => ({
-        ...group,
-        keywords: group.keywords.filter((keyword) =>
-          keyword.toLowerCase().includes(query)
-        ),
-      }))
-      .filter((group) => group.keywords.length > 0);
-  }, [keywordSearch]);
-
-  const toggleConcernKeyword = (keyword: string) => {
-    setFormData((prev) => {
-      const has = prev.concernKeywords.includes(keyword);
-      const selected = has
-        ? prev.concernKeywords.filter((item) => item !== keyword)
-        : [...prev.concernKeywords, keyword];
-
-      return { ...prev, concernKeywords: selected };
-    });
   };
 
   const handleSaveProduct = async () => {
@@ -144,15 +187,15 @@ export function AdminProducts() {
     setSubmitting(true);
 
     try {
-      let imageUrl = formData.image_url;
+      if (!selectedFile) {
+        toast.error("Please select a product image file.");
+        return;
+      }
 
-      if (selectedFile) {
-        const uploaded = await uploadImage(selectedFile);
-        if (!uploaded) {
-          toast.error("Image upload failed");
-          return;
-        }
-        imageUrl = uploaded;
+      const uploaded = await uploadImage(selectedFile);
+      if (!uploaded) {
+        toast.error("Image upload failed");
+        return;
       }
 
       const payload = {
@@ -160,12 +203,9 @@ export function AdminProducts() {
         description: formData.description,
         price: parseFloat(formData.price),
         inStock: formData.stock === "1",
-        image: imageUrl,
+        image: uploaded,
         category: formData.category,
-        concernKeywords: formData.concernKeywords,
-        skin_type: parseArray(formData.skin_type),
-        hair_type: parseArray(formData.hair_type),
-        benefits: parseArray(formData.benefits),
+        tags: formData.subcategory ? [formData.subcategory] : [],
         ingredients: parseArray(formData.ingredients),
       };
 
@@ -193,15 +233,10 @@ export function AdminProducts() {
         description: "",
         price: "",
         stock: "1",
-        image_url: "",
         category: "skin",
-        concernKeywords: [],
-        skin_type: "",
-        hair_type: "",
-        benefits: "",
+        subcategory: categorySubcategories.skin[0],
         ingredients: "",
       });
-      setKeywordSearch("");
       setSelectedFile(null);
     } catch {
       toast.error("Error saving product");
@@ -300,8 +335,17 @@ export function AdminProducts() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="image_url">Image URL</Label>
-              <Input id="image_url" name="image_url" placeholder="Image URL" onChange={handleInputChange} value={formData.image_url} />
+              <Label htmlFor="product_image">Product Image</Label>
+              <input
+                id="product_image"
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+              {selectedFile && (
+                <p className="text-sm text-gray-600">Selected file: {selectedFile.name}</p>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -316,81 +360,31 @@ export function AdminProducts() {
                 <option value="skin">Skin</option>
                 <option value="hair">Hair</option>
                 <option value="lips">Lips</option>
+                <option value="soap">Soap</option>
+                <option value="baby-care">Baby Care</option>
               </select>
             </div>
 
-            <div className="grid gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">Concern Keywords</p>
-                  <p className="text-xs text-muted-foreground">Search and select keywords grouped by category.</p>
-                </div>
-                <Input
-                  placeholder="Search keywords"
-                  value={keywordSearch}
-                  onChange={(event) => setKeywordSearch(event.target.value)}
-                  className="max-w-xs"
-                />
-              </div>
-
-              <div className="space-y-4 max-h-[340px] overflow-y-auto pr-2">
-                {filteredKeywordGroups.map((group) => (
-                  <div key={group.groupName}>
-                    <div className="mb-2 text-sm font-semibold text-slate-700">{group.groupName}</div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {group.keywords.map((keyword) => {
-                        const selected = formData.concernKeywords.includes(keyword);
-                        return (
-                          <label
-                            key={keyword}
-                            className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition ${
-                              selected
-                                ? "border-emerald-500 bg-emerald-50"
-                                : "border-gray-200 bg-white hover:border-emerald-300"
-                            }`}
-                          >
-                            <Checkbox
-                              checked={selected}
-                              onCheckedChange={() => toggleConcernKeyword(keyword)}
-                            />
-                            <span className="text-sm">{keyword}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
+            <div className="grid gap-2">
+              <Label htmlFor="subcategory">Product Subcategory</Label>
+              <select
+                id="subcategory"
+                name="subcategory"
+                value={formData.subcategory}
+                onChange={handleInputChange}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+              >
+                {(categorySubcategories[formData.category] || []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
-              </div>
-
-              {formData.concernKeywords.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {formData.concernKeywords.map((keyword) => (
-                    <Badge key={keyword} variant="secondary">{keyword}</Badge>
-                  ))}
-                </div>
-              )}
+              </select>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="skin_type">Skin Type</Label>
-                <Input id="skin_type" name="skin_type" placeholder="dry, oily, sensitive" onChange={handleInputChange} value={formData.skin_type} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="hair_type">Hair Type</Label>
-                <Input id="hair_type" name="hair_type" placeholder="dry, curly, oily" onChange={handleInputChange} value={formData.hair_type} />
-              </div>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="benefits">Benefits</Label>
-                <Input id="benefits" name="benefits" placeholder="moisturizing, brightening" onChange={handleInputChange} value={formData.benefits} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="ingredients">Ingredients</Label>
-                <Input id="ingredients" name="ingredients" placeholder="aloe vera, neem" onChange={handleInputChange} value={formData.ingredients} />
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ingredients">Ingredients</Label>
+              <Input id="ingredients" name="ingredients" placeholder="aloe vera, neem" onChange={handleInputChange} value={formData.ingredients} />
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

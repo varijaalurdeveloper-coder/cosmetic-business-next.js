@@ -7,7 +7,9 @@ export type ProductCategory =
   | "hair"
   | "skin"
   | "lips"
-  | "body"; // optional (future-safe)
+  | "body"
+  | "soap"
+  | "baby-care"; // optional (future-safe)
 
 /**
  * =========================
