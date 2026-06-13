@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { products as staticProducts } from "@/lib/data/products";
 import { createClient } from "@supabase/supabase-js";
 
+export const dynamic = "force-dynamic";
+
 function normalizeCategory(category: string) {
   if (!category) return "general";
 
