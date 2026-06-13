@@ -25,7 +25,7 @@ export async function GET() {
       name: p.name,
       description: p.description,
       price: Number(p.price),
-      category: p.category,
+      category: normalizeCategory(p.category),
       image: p.image_url,
       inStock: Boolean(p.in_stock),
       volume: p.volume,

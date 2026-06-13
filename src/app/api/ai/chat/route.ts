@@ -1,6 +1,8 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { products as staticProducts } from "@/lib/data/products";
+
+export const dynamic = "force-dynamic";
 import {
   getAllowedConcernKeyword,
   getConcernCategoriesFromText,
@@ -159,10 +161,10 @@ async function fetchAllProducts(): Promise<Product[]> {
     if (error) console.error("Supabase error:", error);
 
     const dbProducts: Product[] = (data || []).map((p: any) => ({
-      id: p.id,
+      id: String(p.id),
       name: p.name,
       price: Number(p.price) || 0,
-      category: p.category || "general",
+      category: normalizeCategory(p.category),
       description: p.description || "",
       image: p.image_url || "/placeholder.png",
       inStock: p.in_stock ?? true,

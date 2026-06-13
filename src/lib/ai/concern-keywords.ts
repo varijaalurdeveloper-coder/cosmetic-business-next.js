@@ -576,9 +576,10 @@ export function getConcernCategoriesFromText(text: string): string[] {
     if (/(hair|scalp|baal|bal|jhad|girna)/.test(normalized)) categories.add("hair");
     if (/(lip|lips|honth|hontho)/.test(normalized)) categories.add("lips");
     if (/(skin|face|sun|sunscreen|spf|under arm|underarm)/.test(normalized)) categories.add("skin");
-    if (/(soap|soaps)/.test(normalized)) categories.add("soap");
-    if (/(baby|baby skin|baby bath|baby products)/.test(normalized)) categories.add("baby-care");
   }
+
+  if (/(soap|soaps)/.test(normalized)) categories.add("soap");
+  if (/(baby|baby skin|baby bath|baby products)/.test(normalized)) categories.add("baby-care");
 
   if (categories.size === 0) {
     categories.add("skin");
