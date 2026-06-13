@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { products as staticProducts } from "@/lib/data/products";
 import { createClient } from "@supabase/supabase-js";
 
+function normalizeCategory(category: string) {
+  if (!category) return "general";
+
+  const c = category.toLowerCase();
+  if (c.includes("hair")) return "hair";
+  if (c.includes("soap")) return "soap";
+  if (c.includes("baby")) return "baby-care";
+  if (c.includes("skin") || c.includes("face")) return "skin";
+  if (c.includes("lip")) return "lips";
+  return "general";
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
