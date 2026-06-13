@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { products as staticProducts } from "@/lib/data/products";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +107,7 @@ function transformProduct(p: any) {
 
 export async function GET() {
   try {
-    const supabase = createClient();
+    const supabase = createAdminClient() ?? createClient();
 
     const { data, error } = await supabase
       .from("products")

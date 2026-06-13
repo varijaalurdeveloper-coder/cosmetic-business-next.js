@@ -559,9 +559,9 @@ export function isIrrelevantQuery(text: string): boolean {
   return irrelevantSignals.some((signal) => normalized.includes(signal));
 }
 
-export function getConcernCategoriesFromText(text: string): ConcernCategory[] {
+export function getConcernCategoriesFromText(text: string): string[] {
   const keywords = getConcernKeywordsFromText(text);
-  const categories = new Set<ConcernCategory>();
+  const categories = new Set<string>();
 
   for (const keyword of keywords) {
     const category = getConcernCategory(keyword);
@@ -575,7 +575,9 @@ export function getConcernCategoriesFromText(text: string): ConcernCategory[] {
   if (categories.size === 0) {
     if (/(hair|scalp|baal|bal|jhad|girna)/.test(normalized)) categories.add("hair");
     if (/(lip|lips|honth|hontho)/.test(normalized)) categories.add("lips");
-    if (/(skin|face|sun|sunscreen|spf|under arm|underarm|baby|baby skin)/.test(normalized)) categories.add("skin");
+    if (/(skin|face|sun|sunscreen|spf|under arm|underarm)/.test(normalized)) categories.add("skin");
+    if (/(soap|soaps)/.test(normalized)) categories.add("soap");
+    if (/(baby|baby skin|baby bath|baby products)/.test(normalized)) categories.add("baby-care");
   }
 
   if (categories.size === 0) {

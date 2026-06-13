@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { products as staticProducts } from "@/lib/data/products";
 import {
   getAllowedConcernKeyword,
@@ -153,7 +153,7 @@ function calculateProductScore(
 
 async function fetchAllProducts(): Promise<Product[]> {
   try {
-    const supabase = createClient();
+    const supabase = createAdminClient() ?? createClient();
 
     const { data, error } = await supabase.from("products").select("*");
     if (error) console.error("Supabase error:", error);
@@ -292,12 +292,19 @@ function filterProducts(
   const scored = products
     .map((product) => {
       const productKeywords = normalizeProductConcernKeywords(product);
-      if (productKeywords.length === 0) return null;
       if (!product.inStock) return null;
 
       const productCategory = normalizeCategory(product.category);
       if (!categories.includes("general") && !categories.includes(productCategory)) {
         return null;
+      }
+
+      if (productKeywords.length === 0) {
+        if (requiredRoots.length > 0) {
+          return null;
+        }
+
+        return { product, score: Math.max(7, product.priority || 3) };
       }
 
       if (!hasBabySignal && /baby/i.test(product.name)) {
