@@ -51,7 +51,7 @@ export async function GET() {
 
     // ✅ RETURN FULL AI DATA
     const products = (data || []).map((p: any) => ({
-      id: p.id,
+      id: String(p.id),
       name: p.name,
       description: p.description,
       price: p.price,
@@ -161,11 +161,28 @@ export async function POST(req: Request) {
       return jsonError(error.message);
     }
 
+    const product = {
+      id: String(data.id),
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      category: data.category,
+      image: data.image_url,
+      inStock: data.in_stock,
+      volume: data.volume,
+      concernKeywords: data.concerns || data.concernKeywords || [],
+      tags: data.tags || [],
+      benefits: data.benefits || [],
+      skin_type: data.skin_type || [],
+      hair_type: data.hair_type || [],
+      ingredients: data.ingredients || [],
+    };
+
     return NextResponse.json(
       {
         success: true,
         message: "Product created successfully",
-        product: data,
+        product,
       },
       { status: 201 }
     );

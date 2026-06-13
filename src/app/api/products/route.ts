@@ -20,31 +20,32 @@ export async function GET() {
     }
 
     // ✅ Transform DB products to match frontend
-    const dbProducts = (data || []).map((p: any) => ({
-      id: p.id,
+    const dbProducts = (data || []).map((p: any, index: number) => ({
+      id: String(p.id ?? `db-${index}`),
       name: p.name,
       description: p.description,
-      price: p.price,
+      price: Number(p.price),
       category: p.category,
       image: p.image_url,
-      inStock: p.in_stock,
+      inStock: Boolean(p.in_stock),
       volume: p.volume,
       concernKeywords: p.concerns || p.concernKeywords || [],
+      tags: p.tags || [],
+      benefits: p.benefits || [],
+      skin_type: p.skin_type || [],
+      hair_type: p.hair_type || [],
+      ingredients: p.ingredients || [],
     }));
 
     // ✅ Merge static + DB products, with DB products overriding static duplicates
     const productsMap = new Map<string, any>();
 
     for (const product of staticProducts) {
-      if (product?.id) {
-        productsMap.set(product.id, product);
-      }
+      productsMap.set(String(product.id), product);
     }
 
     for (const product of dbProducts) {
-      if (product?.id) {
-        productsMap.set(product.id, product);
-      }
+      productsMap.set(String(product.id), product);
     }
 
     const allProducts = Array.from(productsMap.values());
