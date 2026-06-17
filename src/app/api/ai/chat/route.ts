@@ -36,6 +36,7 @@ interface Product {
   hair_type?: string[];
   benefits?: string[];
   priority?: number;
+  subcategory?: string;
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
@@ -52,6 +53,65 @@ function normalizeCategory(category: string) {
   if (c.includes("baby")) return "baby-care";
   if (c.includes("skin") || c.includes("face")) return "skin";
   return "general";
+}
+
+function normalizeString(value: unknown): string {
+  return String(value ?? "").toLowerCase().trim();
+}
+
+function hasTruthyFlag(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase().trim();
+    return ["true", "1", "yes", "published", "visible", "active", "available", "in stock", "in_stock"].includes(normalized);
+  }
+  return false;
+}
+
+function isProductPublishedRow(row: any): boolean {
+  if (row?.published !== undefined && !hasTruthyFlag(row.published)) return false;
+  if (row?.is_published !== undefined && !hasTruthyFlag(row.is_published)) return false;
+  if (row?.visible !== undefined && !hasTruthyFlag(row.visible)) return false;
+  if (row?.is_visible !== undefined && !hasTruthyFlag(row.is_visible)) return false;
+  if (row?.active !== undefined && !hasTruthyFlag(row.active)) return false;
+  if (row?.is_active !== undefined && !hasTruthyFlag(row.is_active)) return false;
+  if (row?.status !== undefined) {
+    const status = String(row.status ?? "").toLowerCase().trim();
+    if (status && !["published", "visible", "active", "available", "in stock", "in_stock"].includes(status)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function getProductSubcategoryCandidates(product: Product): string[] {
+  const values = [
+    ...(product.concerns ?? []),
+    ...(product.concernKeywords ?? []),
+    ...(product.tags ?? []),
+    ...(product.subcategory ? [product.subcategory] : []),
+  ];
+
+  return Array.from(
+    new Set(values.map((value) => normalizeString(value)).filter(Boolean))
+  );
+}
+
+function productMatchesSubcategory(product: Product, selectedSubcategory: string): boolean {
+  const normalizedSelected = normalizeString(selectedSubcategory);
+  if (!normalizedSelected) return false;
+
+  const candidates = getProductSubcategoryCandidates(product);
+  if (candidates.includes(normalizedSelected)) {
+    return true;
+  }
+
+  const text = [product.name, product.description, ...(product.tags ?? [])]
+    .join(" ")
+    .toLowerCase();
+
+  return text.includes(normalizedSelected);
 }
 
 function normalizeProductConcernKeywords(product: Product): string[] {
@@ -160,23 +220,26 @@ async function fetchAllProducts(): Promise<Product[]> {
     const { data, error } = await supabase.from("products").select("*");
     if (error) console.error("Supabase error:", error);
 
-    const dbProducts: Product[] = (data || []).map((p: any) => ({
-      id: String(p.id),
-      name: p.name,
-      price: Number(p.price) || 0,
-      category: normalizeCategory(p.category),
-      description: p.description || "",
-      image: p.image_url || "/placeholder.png",
-      inStock: p.in_stock ?? true,
-      volume: p.volume,
-      tags: p.tags || [],
-      concerns: p.concerns || p.concernKeywords || [],
-      concernKeywords: p.concernKeywords || p.concerns || [],
-      skin_type: p.skin_type || [],
-      hair_type: p.hair_type || [],
-      benefits: p.benefits || [],
-      priority: p.priority || 3,
-    }));
+    const dbProducts: Product[] = (data || [])
+      .filter(isProductPublishedRow)
+      .map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        price: Number(p.price) || 0,
+        category: normalizeCategory(p.category),
+        description: p.description || "",
+        image: p.image_url || "/placeholder.png",
+        inStock: p.in_stock ?? true,
+        volume: p.volume,
+        tags: p.tags || [],
+        concerns: p.concerns || p.concernKeywords || [],
+        concernKeywords: p.concernKeywords || p.concerns || [],
+        skin_type: p.skin_type || [],
+        hair_type: p.hair_type || [],
+        benefits: p.benefits || [],
+        priority: p.priority || 3,
+        subcategory: p.subcategory || p.sub_category || undefined,
+      }));
 
     const staticMapped: Product[] = staticProducts.map((p: any) => ({
       id: p.id,
@@ -194,13 +257,15 @@ async function fetchAllProducts(): Promise<Product[]> {
       hair_type: p.hair_type || [],
       benefits: p.benefits || [],
       priority: p.priority || 3,
+      subcategory: p.subcategory || p.sub_category || undefined,
     }));
 
     const productMap = new Map<string, Product>();
 
-    for (const product of [...dbProducts, ...staticMapped]) {
-      if (!productMap.has(product.id)) {
-        productMap.set(product.id, product);
+    for (const product of [...staticMapped, ...dbProducts]) {
+      const key = product.name.toLowerCase().trim();
+      if (!productMap.has(key)) {
+        productMap.set(key, product);
       }
     }
 
@@ -260,13 +325,45 @@ function filterProducts(
   categories: string[],
   userKeywords: string[],
   faceConcern: boolean,
-  rawMessage: string
+  rawMessage: string,
+  selectedCategory?: string
 ) {
   const normalizedMessage = rawMessage
     .toLowerCase()
     .replace(/[-–—]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+  const selectedSubcategoryLabel =
+    categories.length === 1 && userKeywords.length === 1
+      ? userKeywords[0]
+      : normalizedMessage;
+
+  const effectiveCategories = selectedCategory
+    ? [normalizeCategory(selectedCategory)]
+    : categories;
+
+  const directSubcategoryMatches =
+    effectiveCategories.length === 1 && selectedSubcategoryLabel
+      ? products.filter((product) => {
+          const productCategory = normalizeCategory(product.category);
+          if (
+            !effectiveCategories.includes("general") &&
+            !effectiveCategories.includes(productCategory)
+          ) {
+            return false;
+          }
+          if (!product.inStock) return false;
+          return productMatchesSubcategory(product, selectedSubcategoryLabel);
+        })
+      : [];
+
+  if (directSubcategoryMatches.length > 0) {
+    return {
+      products: directSubcategoryMatches.slice(0, 6),
+      confidenceScore: 0.9,
+    };
+  }
 
   const requiredRoots = getConcernRootsFromKeywords(userKeywords);
   const hasBabySignal = /\b(baby|infant|toddler)\b/.test(normalizedMessage);
@@ -434,7 +531,7 @@ Return format:
 
 export async function POST(request: NextRequest) {
   try {
-    const { message } = await request.json();
+    const { message, selectedCategory } = await request.json();
     const normalizedMessage = String(message || "").trim();
 
     if (!normalizedMessage) {
@@ -454,7 +551,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userKeywords = getConcernKeywordsFromText(normalizedMessage);
-    const categories = getConcernCategoriesFromText(normalizedMessage);
+    const categories = selectedCategory
+      ? [normalizeCategory(String(selectedCategory))]
+      : getConcernCategoriesFromText(normalizedMessage);
     const faceConcern = isFaceConcern(normalizedMessage, userKeywords);
     const allProducts = await fetchAllProducts();
     const { products: filteredProducts, confidenceScore } = filterProducts(
@@ -462,7 +561,8 @@ export async function POST(request: NextRequest) {
       categories,
       userKeywords,
       faceConcern,
-      normalizedMessage
+      normalizedMessage,
+      selectedCategory
     );
 
     if (filteredProducts.length === 0) {

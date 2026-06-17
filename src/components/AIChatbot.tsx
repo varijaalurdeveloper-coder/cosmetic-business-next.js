@@ -195,9 +195,10 @@ export default function AIChatbot() {
   };
 
   const handleSubcategorySelect = (subcategory: string) => {
+    const uiCategory = selectedCategory;
     setSelectedCategory(null);
     setCurrentPane("none");
-    handleSend(subcategory);
+    handleSend(subcategory, uiCategory);
   };
 
   const handleFollowUpSelection = (answer: "yes" | "no") => {
@@ -243,7 +244,10 @@ export default function AIChatbot() {
   };
 
   // ✅ SEND MESSAGE
-  const handleSend = async (customMessage?: string) => {
+  const handleSend = async (
+    customMessage?: string,
+    selectedCategoryFromUI?: string | null
+  ) => {
     const finalMessage = (customMessage ?? "").trim();
     if (!finalMessage || isLoading) return;
 
@@ -262,7 +266,10 @@ export default function AIChatbot() {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: finalMessage }),
+        body: JSON.stringify({
+          message: finalMessage,
+          selectedCategory: selectedCategoryFromUI ?? selectedCategory,
+        }),
       });
 
       const data = await response.json();
