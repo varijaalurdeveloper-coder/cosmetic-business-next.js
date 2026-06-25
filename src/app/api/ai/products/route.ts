@@ -89,6 +89,7 @@ function transformProduct(p: any) {
     description: p.description || "",
     price: Number(p.price) || 0,
     category: normalizeCategory(p.category),
+    subcategory: p.sub_category || p.subcategory || undefined,
     image: p.image_url || "/placeholder.png",
     inStock: p.in_stock ?? true,
     volume: p.volume,

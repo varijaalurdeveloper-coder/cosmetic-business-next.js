@@ -14,16 +14,16 @@ const supabase = createClient(
 const jsonError = (message: string, status = 500) =>
   NextResponse.json({ success: false, error: message }, { status });
 
-function normalizeCategory(category: string) {
-  if (!category) return "skin";
-  const c = category.toLowerCase().replace(/\s+/g, "-");
+function normalizeCategory(category: string | undefined | null) {
+  if (!category?.toString().trim()) return "general";
+  const c = category.toString().toLowerCase().replace(/\s+/g, "-");
   if (c.includes("hair")) return "hair";
   if (c.includes("lip")) return "lips";
   if (c.includes("soap")) return "soap";
   if (c.includes("baby")) return "baby-care";
   if (c === "body") return "body";
   if (c.includes("skin") || c.includes("face")) return "skin";
-  return "skin";
+  return "general";
 }
 
 function normalizeKeywordInput(raw: unknown): string[] {
@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       category,
       inStock,
       volume,
+      subcategory,
       tags = [],
       benefits = [],
       skin_type = [],
@@ -106,7 +107,6 @@ export async function POST(req: Request) {
     if (!description?.trim()) return jsonError("Description is required", 400);
     if (price === undefined || isNaN(price)) return jsonError("Valid price required", 400);
     if (!image?.trim()) return jsonError("Image is required", 400);
-    if (!category?.trim()) return jsonError("Category is required", 400);
 
     const normalizedCategory = normalizeCategory(category);
 
@@ -141,11 +141,11 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from("products")
       .insert({
-        name,
-        description,
-        price,
-        image_url: image,
-        category: normalizedCategory,
+         name,
+         description,
+         price,
+         image_url: image,
+         category: normalizedCategory,
         in_stock: inStock ?? true,
         volume: volume ?? null,
         concerns: concernKeywords.length ? concernKeywords : autoConcerns,
@@ -154,7 +154,7 @@ export async function POST(req: Request) {
         skin_type,
         hair_type,
         ingredients,
-      })
+})
       .select()
       .single();
 
@@ -169,6 +169,10 @@ export async function POST(req: Request) {
       description: data.description,
       price: data.price,
       category: data.category,
+      subcategory:
+      Array.isArray(data.tags) && data.tags.length > 0
+      ? data.tags[0]
+       : null,
       image: data.image_url,
       inStock: data.in_stock,
       volume: data.volume,

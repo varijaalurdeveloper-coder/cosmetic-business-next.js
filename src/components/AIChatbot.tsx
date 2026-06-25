@@ -198,7 +198,7 @@ export default function AIChatbot() {
     const uiCategory = selectedCategory;
     setSelectedCategory(null);
     setCurrentPane("none");
-    handleSend(subcategory, uiCategory);
+    handleSend(subcategory, uiCategory, subcategory);
   };
 
   const handleFollowUpSelection = (answer: "yes" | "no") => {
@@ -246,7 +246,8 @@ export default function AIChatbot() {
   // ✅ SEND MESSAGE
   const handleSend = async (
     customMessage?: string,
-    selectedCategoryFromUI?: string | null
+    selectedCategoryFromUI?: string | null,
+    selectedSubcategoryFromUI?: string | null
   ) => {
     const finalMessage = (customMessage ?? "").trim();
     if (!finalMessage || isLoading) return;
@@ -269,6 +270,7 @@ export default function AIChatbot() {
         body: JSON.stringify({
           message: finalMessage,
           selectedCategory: selectedCategoryFromUI ?? selectedCategory,
+          selectedSubcategory: selectedSubcategoryFromUI ?? undefined,
         }),
       });
 

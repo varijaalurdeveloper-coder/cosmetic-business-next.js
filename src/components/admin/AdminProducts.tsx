@@ -120,8 +120,8 @@ export function AdminProducts() {
     description: "",
     price: "",
     stock: "1",
-    category: "skin",
-    subcategory: categorySubcategories.skin[0],
+    category: "",
+    subcategory: "",
     ingredients: "",
   });
 
@@ -164,7 +164,7 @@ export function AdminProducts() {
         return {
           ...prev,
           category: value,
-          subcategory: categorySubcategories[value]?.[0] || "",
+          subcategory: "",
         };
       }
 
@@ -204,7 +204,8 @@ export function AdminProducts() {
         price: parseFloat(formData.price),
         inStock: formData.stock === "1",
         image: uploaded,
-        category: formData.category,
+        category: formData.category || undefined,
+        subcategory: formData.subcategory || undefined,
         tags: formData.subcategory ? [formData.subcategory] : [],
         ingredients: parseArray(formData.ingredients),
       };
@@ -233,8 +234,8 @@ export function AdminProducts() {
         description: "",
         price: "",
         stock: "1",
-        category: "skin",
-        subcategory: categorySubcategories.skin[0],
+        category: "",
+        subcategory: "",
         ingredients: "",
       });
       setSelectedFile(null);
@@ -357,6 +358,7 @@ export function AdminProducts() {
                 onChange={handleInputChange}
                 className="rounded-md border border-gray-200 px-3 py-2 text-sm"
               >
+                <option value="">Choose a category (optional)</option>
                 <option value="skin">Skin</option>
                 <option value="hair">Hair</option>
                 <option value="lips">Lips</option>
@@ -374,6 +376,7 @@ export function AdminProducts() {
                 onChange={handleInputChange}
                 className="rounded-md border border-gray-200 px-3 py-2 text-sm"
               >
+                <option value="">Choose a subcategory (optional)</option>
                 {(categorySubcategories[formData.category] || []).map((option) => (
                   <option key={option} value={option}>
                     {option}

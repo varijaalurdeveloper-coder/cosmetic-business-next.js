@@ -43,16 +43,21 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent";
 
-function normalizeCategory(category: string) {
+function normalizeCategory(category: string | undefined | null) {
   if (!category) return "general";
 
-  const c = category.toLowerCase();
+  const c = String(category).toLowerCase();
   if (c.includes("hair")) return "hair";
   if (c.includes("lip")) return "lips";
   if (c.includes("soap")) return "soap";
   if (c.includes("baby")) return "baby-care";
   if (c.includes("skin") || c.includes("face")) return "skin";
   return "general";
+}
+
+function normalizeSubcategory(value: string | undefined | null) {
+  if (!value) return "";
+  return String(value).toLowerCase().replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function normalizeString(value: unknown): string {
@@ -99,7 +104,7 @@ function getProductSubcategoryCandidates(product: Product): string[] {
 }
 
 function productMatchesSubcategory(product: Product, selectedSubcategory: string): boolean {
-  const normalizedSelected = normalizeString(selectedSubcategory);
+  const normalizedSelected = normalizeSubcategory(selectedSubcategory);
   if (!normalizedSelected) return false;
 
   const candidates = getProductSubcategoryCandidates(product);
@@ -112,6 +117,169 @@ function productMatchesSubcategory(product: Product, selectedSubcategory: string
     .toLowerCase();
 
   return text.includes(normalizedSelected);
+}
+
+function productMatchesCategoryOrSubcategory(
+  product: Product,
+  selectedCategory?: string,
+  selectedSubcategory?: string
+) {
+  const normalizedCategory = normalizeCategory(selectedCategory);
+  const normalizedSubcategory = normalizeSubcategory(selectedSubcategory);
+  const productCategory = normalizeCategory(product.category);
+
+  if (normalizedCategory && normalizedCategory !== "general") {
+    if (productCategory === normalizedCategory) {
+      return true;
+    }
+  }
+
+  if (normalizedSubcategory && productMatchesSubcategory(product, normalizedSubcategory)) {
+    return true;
+  }
+
+  const text = [product.name, product.description, ...(product.tags ?? []), ...(product.benefits ?? []), ...(product.ingredients ?? [])]
+    .join(" ")
+    .toLowerCase();
+
+  if (normalizedCategory && normalizedCategory !== "general" && text.includes(normalizedCategory)) {
+    return true;
+  }
+
+  if (normalizedSubcategory && text.includes(normalizedSubcategory)) {
+    return true;
+  }
+
+  return false;
+}
+
+function selectCandidateProducts(
+  products: Product[],
+  selectedCategory?: string,
+  selectedSubcategory?: string,
+  message?: string
+) {
+  const normalizedCategory = normalizeCategory(selectedCategory);
+  const normalizedSubcategory = normalizeSubcategory(selectedSubcategory);
+  const normalizedMessage = String(message ?? "").toLowerCase();
+
+  const directMatches = products.filter((product) =>
+    productMatchesCategoryOrSubcategory(product, normalizedCategory, normalizedSubcategory)
+  );
+
+  if (directMatches.length > 0) {
+    return Array.from(new Map(directMatches.map((p) => [p.id, p])).values()).slice(0, 20);
+  }
+
+  const keywordMatches = products.filter((product) => {
+    const text = [product.name, product.description, ...(product.tags ?? []), ...(product.benefits ?? []), ...(product.ingredients ?? [])]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      normalizedCategory !== "general" && text.includes(normalizedCategory)
+    ) || (normalizedSubcategory && text.includes(normalizedSubcategory)) || (normalizedMessage && text.includes(normalizedMessage));
+  });
+
+  if (keywordMatches.length > 0) {
+    return Array.from(new Map(keywordMatches.map((p) => [p.id, p])).values()).slice(0, 20);
+  }
+
+  return products
+    .filter((product) => product.inStock)
+    .slice(0, 20);
+}
+
+function formatProductForPrompt(product: Product) {
+  const parts = [
+    `id: ${product.id}`,
+    `name: ${product.name}`,
+    `description: ${product.description}`,
+    `category: ${product.category || "general"}`,
+  ];
+
+  if (product.subcategory) parts.push(`subCategory: ${product.subcategory}`);
+  if (product.ingredients?.length) parts.push(`ingredients: ${product.ingredients.join(", ")}`);
+  if (product.benefits?.length) parts.push(`benefits: ${product.benefits.join(", ")}`);
+
+  return parts.join(" | ");
+}
+
+function createRecommendationPrompt(
+  selectedCategory: string | undefined,
+  selectedSubcategory: string | undefined,
+  products: Product[],
+  userMessage: string,
+  userKeywords: string[],
+  knowledgeContext: string
+) {
+  const selectedCategoryLabel = selectedCategory ? selectedCategory : "general beauty";
+  const selectedSubcategoryLabel = selectedSubcategory ? selectedSubcategory : "general concern";
+
+  const productList = products
+    .map((p, i) => `${i + 1}. ${formatProductForPrompt(p)}`)
+    .join("\n");
+
+  return `You are an expert organic beauty advisor for Rima Cosmetics.
+
+Selected category: ${selectedCategoryLabel}
+Selected subcategory: ${selectedSubcategoryLabel}
+User concern: ${userMessage}
+Detected keywords: ${userKeywords.join(", ") || "none"}
+
+Products:
+${productList}
+
+Knowledge base context:
+${knowledgeContext || "No additional context available."}
+
+Important:
+- ONLY recommend products from the list above.
+- Choose products that best match the selected category and subcategory.
+- Prefer exact concern matches, but use semantic relevance if an exact match is unavailable.
+- Include relevant products with empty category/subcategory when the description strongly matches the user concern.
+- Return 3-5 top recommendations using product names only.
+- Do not invent products or details.
+- Keep your response warm, concise, and customer friendly.
+
+Return a short recommendation paragraph and a numbered recommendation list of the best matching products.`;
+}
+
+async function generateAIReply(
+  userMessage: string,
+  userKeywords: string[],
+  products: Product[],
+  selectedCategory: string | undefined,
+  selectedSubcategory: string | undefined,
+  relevantDocs: KnowledgeDocument[]
+) {
+  try {
+    const knowledgeContext = buildKnowledgePromptContext(relevantDocs);
+    const prompt = createRecommendationPrompt(
+      selectedCategory,
+      selectedSubcategory,
+      products,
+      userMessage,
+      userKeywords,
+      knowledgeContext
+    );
+
+    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    });
+
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  } catch (err) {
+    console.error("Gemini error:", err);
+    return null;
+  }
 }
 
 function normalizeProductConcernKeywords(product: Product): string[] {
@@ -467,71 +635,9 @@ function filterProducts(
   };
 }
 
-async function generateAIReply(
-  userMessage: string,
-  userKeywords: string[],
-  products: Product[],
-  relevantDocs: KnowledgeDocument[]
-) {
-  try {
-    const productList = products
-      .map((p, i) => `${i + 1}. ${p.name} (₹${p.price})`)
-      .join("\n");
-
-    const knowledgeContext = buildKnowledgePromptContext(relevantDocs);
-
-    const prompt = `You are an expert organic beauty advisor for Rima Cosmetics.
-
-Use only the knowledge base context below when answering questions about the business, shipping, returns, owner credentials, or product usage. Avoid hallucination and do not invent product details.
-
-Knowledge base context:
-${knowledgeContext || "No additional context available."}
-
-User concern: ${userMessage}
-Detected concern keywords: ${userKeywords.join(", ") || "none"}
-
-Products:
-${productList}
-
-IMPORTANT RULES:
-- ONLY recommend from the provided product list
-- DO NOT add any extra products
-- Keep response warm, concise, and customer-friendly
-- When the user asks about orders or shipping, refer to the shipping and order guidance only
-- When the user asks about the owner, refer to the owner credentials only
-- If you cannot answer from the provided context, say you do not have that information and suggest contacting the owner
-
-Return format:
-1. One or two sentences of personalized beauty advice
-2. A short recommendation list of the products above
-3. A friendly closing sentence that invites the user to add to cart or contact the owner
-`;
-
-    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    });
-
-    const data = await res.json();
-
-    return (
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "✨ Here are some recommended products for you."
-    );
-  } catch (err) {
-    console.error("Gemini error:", err);
-    return "✨ Here are some recommended products for you.";
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const { message, selectedCategory } = await request.json();
+    const { message, selectedCategory, selectedSubcategory } = await request.json();
     const normalizedMessage = String(message || "").trim();
 
     if (!normalizedMessage) {
@@ -556,8 +662,14 @@ export async function POST(request: NextRequest) {
       : getConcernCategoriesFromText(normalizedMessage);
     const faceConcern = isFaceConcern(normalizedMessage, userKeywords);
     const allProducts = await fetchAllProducts();
-    const { products: filteredProducts, confidenceScore } = filterProducts(
+    const candidateProducts = selectCandidateProducts(
       allProducts,
+      selectedCategory,
+      selectedSubcategory,
+      normalizedMessage
+    );
+    const { products: filteredProducts, confidenceScore } = filterProducts(
+      candidateProducts,
       categories,
       userKeywords,
       faceConcern,
@@ -586,6 +698,8 @@ export async function POST(request: NextRequest) {
       normalizedMessage,
       userKeywords,
       filteredProducts,
+      selectedCategory,
+      selectedSubcategory,
       relevantDocs
     );
 

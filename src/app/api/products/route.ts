@@ -40,6 +40,7 @@ export async function GET() {
       description: p.description,
       price: Number(p.price),
       category: normalizeCategory(p.category),
+      subcategory: p.sub_category || p.subcategory || undefined,
       image: p.image_url,
       inStock: Boolean(p.in_stock),
       volume: p.volume,

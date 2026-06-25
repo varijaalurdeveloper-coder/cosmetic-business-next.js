@@ -12,8 +12,27 @@ const supabase = createClient(
 const jsonError = (msg: string, status = 500) =>
   NextResponse.json({ success: false, error: msg }, { status });
 
-// ✅ GET SINGLE
-export async function GET(req: Request, { params }: any) {
+// ✅ category normalizer
+function normalizeCategory(category: string | undefined | null) {
+  if (!category?.toString().trim()) return "general";
+
+  const c = category.toString().toLowerCase().replace(/\s+/g, "-");
+
+  if (c.includes("hair")) return "hair";
+  if (c.includes("lip")) return "lips";
+  if (c.includes("soap")) return "soap";
+  if (c.includes("baby")) return "baby-care";
+  if (c === "body") return "body";
+  if (c.includes("skin") || c.includes("face")) return "skin";
+
+  return "general";
+}
+
+// ================= GET SINGLE =================
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const adminCheck = await verifyAdminSession();
 
@@ -23,7 +42,9 @@ export async function GET(req: Request, { params }: any) {
 
     const id = params?.id;
 
-    if (!id) return jsonError("Product ID required", 400);
+    if (!id) {
+      return jsonError("Product ID required", 400);
+    }
 
     const { data, error } = await supabase
       .from("products")
@@ -32,14 +53,14 @@ export async function GET(req: Request, { params }: any) {
       .single();
 
     if (error || !data) {
-      console.error("❌ GET ONE:", error);
+      console.error("❌ GET PRODUCT ERROR:", error);
       return jsonError("Product not found", 404);
     }
 
     return NextResponse.json({
       success: true,
       product: {
-        id: data.id,
+        id: String(data.id),
         name: data.name,
         description: data.description,
         price: data.price,
@@ -47,7 +68,20 @@ export async function GET(req: Request, { params }: any) {
         image: data.image_url,
         inStock: data.in_stock,
         volume: data.volume,
-        concernKeywords: data.concerns || data.concernKeywords || [],
+
+        subcategory:
+          Array.isArray(data.tags) && data.tags.length > 0
+            ? data.tags[0]
+            : null,
+
+        concernKeywords: data.concerns || [],
+        concerns: data.concerns || [],
+        tags: data.tags || [],
+        benefits: data.benefits || [],
+        skin_type: data.skin_type || [],
+        hair_type: data.hair_type || [],
+        ingredients: data.ingredients || [],
+        usage: data.usage || "",
       },
     });
   } catch (err) {
@@ -56,8 +90,11 @@ export async function GET(req: Request, { params }: any) {
   }
 }
 
-// ✅ UPDATE
-export async function PUT(req: Request, { params }: any) {
+// ================= UPDATE =================
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const adminCheck = await verifyAdminSession();
 
@@ -66,34 +103,94 @@ export async function PUT(req: Request, { params }: any) {
     }
 
     const id = params?.id;
-    if (!id) return jsonError("Product ID required", 400);
+
+    if (!id) {
+      return jsonError("Product ID required", 400);
+    }
 
     let body;
+
     try {
       body = await req.json();
     } catch {
       return jsonError("Invalid JSON", 400);
     }
 
-    console.log("✏️ UPDATE:", body);
+    console.log("✏️ PRODUCT UPDATE:", body);
 
-    const updateData: any = {};
+    const updateData: Record<string, any> = {};
 
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.price !== undefined) {
-      if (isNaN(body.price)) return jsonError("Invalid price", 400);
-      updateData.price = body.price;
+    if (body.name !== undefined) {
+      updateData.name = body.name;
     }
-    if (body.image !== undefined) updateData.image_url = body.image;
-    if (body.category !== undefined) updateData.category = body.category;
-    if (body.inStock !== undefined) updateData.in_stock = body.inStock;
-    if (body.volume !== undefined) updateData.volume = body.volume;
 
-    if (body.concernKeywords !== undefined || body.concerns !== undefined) {
-      const rawKeywords = body.concernKeywords ?? body.concerns;
+    if (body.description !== undefined) {
+      updateData.description = body.description;
+    }
+
+    if (body.price !== undefined) {
+      const price = Number(body.price);
+
+      if (Number.isNaN(price)) {
+        return jsonError("Invalid price", 400);
+      }
+
+      updateData.price = price;
+    }
+
+    if (body.image !== undefined) {
+      updateData.image_url = body.image;
+    }
+
+    if (body.category !== undefined) {
+      updateData.category = normalizeCategory(body.category);
+    }
+
+    if (body.inStock !== undefined) {
+      updateData.in_stock = body.inStock;
+    }
+
+    if (body.volume !== undefined) {
+      updateData.volume = body.volume;
+    }
+
+    // ✅ store subcategory inside tags
+    if (body.subcategory !== undefined) {
+      updateData.tags = body.subcategory
+        ? [body.subcategory]
+        : [];
+    }
+
+    if (body.tags !== undefined) {
+      updateData.tags = body.tags;
+    }
+
+    if (body.ingredients !== undefined) {
+      updateData.ingredients = body.ingredients;
+    }
+
+    if (body.benefits !== undefined) {
+      updateData.benefits = body.benefits;
+    }
+
+    if (body.skin_type !== undefined) {
+      updateData.skin_type = body.skin_type;
+    }
+
+    if (body.hair_type !== undefined) {
+      updateData.hair_type = body.hair_type;
+    }
+
+    if (
+      body.concernKeywords !== undefined ||
+      body.concerns !== undefined
+    ) {
+      const rawKeywords =
+        body.concernKeywords ?? body.concerns;
+
       try {
-        updateData.concerns = sanitizeConcernKeywords(rawKeywords);
+        updateData.concerns =
+          sanitizeConcernKeywords(rawKeywords);
       } catch (error) {
         return jsonError((error as Error).message, 400);
       }
@@ -112,14 +209,14 @@ export async function PUT(req: Request, { params }: any) {
 
     if (error || !data) {
       console.error("❌ UPDATE ERROR:", error);
-      return jsonError("Update failed", 500);
+      return jsonError(error?.message || "Update failed", 500);
     }
 
     return NextResponse.json({
       success: true,
-      message: "Updated",
+      message: "Product updated successfully",
       product: {
-        id: data.id,
+        id: String(data.id),
         name: data.name,
         description: data.description,
         price: data.price,
@@ -127,6 +224,20 @@ export async function PUT(req: Request, { params }: any) {
         image: data.image_url,
         inStock: data.in_stock,
         volume: data.volume,
+
+        subcategory:
+          Array.isArray(data.tags) && data.tags.length > 0
+            ? data.tags[0]
+            : null,
+
+        concernKeywords: data.concerns || [],
+        concerns: data.concerns || [],
+        tags: data.tags || [],
+        benefits: data.benefits || [],
+        skin_type: data.skin_type || [],
+        hair_type: data.hair_type || [],
+        ingredients: data.ingredients || [],
+        usage: data.usage || "",
       },
     });
   } catch (err) {
@@ -135,8 +246,11 @@ export async function PUT(req: Request, { params }: any) {
   }
 }
 
-// ✅ DELETE
-export async function DELETE(req: Request, { params }: any) {
+// ================= DELETE =================
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const adminCheck = await verifyAdminSession();
 
@@ -145,7 +259,10 @@ export async function DELETE(req: Request, { params }: any) {
     }
 
     const id = params?.id;
-    if (!id) return jsonError("Product ID required", 400);
+
+    if (!id) {
+      return jsonError("Product ID required", 400);
+    }
 
     const { data, error } = await supabase
       .from("products")
@@ -155,7 +272,7 @@ export async function DELETE(req: Request, { params }: any) {
 
     if (error) {
       console.error("❌ DELETE ERROR:", error);
-      return jsonError("Delete failed", 500);
+      return jsonError(error.message, 500);
     }
 
     if (!data || data.length === 0) {
@@ -164,7 +281,7 @@ export async function DELETE(req: Request, { params }: any) {
 
     return NextResponse.json({
       success: true,
-      message: "Deleted",
+      message: "Deleted successfully",
       product: data[0],
     });
   } catch (err) {

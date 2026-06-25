@@ -9,7 +9,8 @@ export type ProductCategory =
   | "lips"
   | "body"
   | "soap"
-  | "baby-care"; // optional (future-safe)
+  | "baby-care"
+  | "general"; // optional fallback for uncategorized products
 
 /**
  * =========================
@@ -20,11 +21,12 @@ export interface Product {
   id: string;
   name: string;
   price: number;
-  category: ProductCategory;
+  category: ProductCategory | string;
   description: string;
   image: string;
   inStock: boolean;
   volume?: string;
+  subcategory?: string;
 
   /**
    * 🔥 AI FIELDS (OPTIONAL)
