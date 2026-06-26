@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { products as staticProducts } from "@/lib/data/products";
+import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/lib/ai/rag";
 import type { KnowledgeDocument } from "@/lib/ai/knowledge-base";
 
-interface Product {
+{/*interface Product {
   id: string;
   name: string;
   price: number;
@@ -29,15 +30,21 @@ interface Product {
   image: string;
   inStock: boolean;
   volume?: string;
+
   tags?: string[];
   concerns?: string[];
   concernKeywords?: string[];
+
   skin_type?: string[];
   hair_type?: string[];
+
   benefits?: string[];
+  ingredients?: string[];
+  usage?: string;
+
   priority?: number;
   subcategory?: string;
-}
+}*/}
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 const GEMINI_URL =
@@ -405,6 +412,8 @@ async function fetchAllProducts(): Promise<Product[]> {
         skin_type: p.skin_type || [],
         hair_type: p.hair_type || [],
         benefits: p.benefits || [],
+        ingredients: p.ingredients || [],
+        usage: p.usage || "",
         priority: p.priority || 3,
         subcategory: p.subcategory || p.sub_category || undefined,
       }));
@@ -424,8 +433,10 @@ async function fetchAllProducts(): Promise<Product[]> {
       skin_type: p.skin_type || [],
       hair_type: p.hair_type || [],
       benefits: p.benefits || [],
-      priority: p.priority || 3,
-      subcategory: p.subcategory || p.sub_category || undefined,
+      ingredients: p.ingredients || [],
+       usage: p.usage || "",
+        priority: p.priority || 3,
+        subcategory: p.subcategory || p.sub_category || undefined,
     }));
 
     const productMap = new Map<string, Product>();

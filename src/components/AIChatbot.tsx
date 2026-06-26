@@ -8,8 +8,9 @@ import { useRouter } from "next/navigation";
 import { X, BotMessageSquare, Sparkles, Check, RefreshCcw } from "lucide-react";
 import Image from "next/image";
 import type { ProductCategory } from "@/types";
+import type { Product } from "@/types";
 
-interface Product {
+{/*interface Product {
   id: string;
   name: string;
   price: number;
@@ -19,7 +20,7 @@ interface Product {
   inStock: boolean;
   volume?: string;
   tags?: string[];
-}
+}*/}
 
 interface ChatMessage {
   id: string;
