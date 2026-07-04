@@ -1,35 +1,31 @@
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const EMBEDDING_MODEL = "text-embedding-gecko-001";
-const BASE_URL = "https://generativelanguage.googleapis.com/v1";
+import { buildGeminiModelUrl, fetchGeminiJson, getGeminiModelConfig } from "./gemini";
+
+const { embeddingModel: EMBEDDING_MODEL } = getGeminiModelConfig();
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!text) return [];
 
-  const url = `${BASE_URL}/models/${EMBEDDING_MODEL}:embedText${GEMINI_API_KEY ? `?key=${GEMINI_API_KEY}` : ""}`;
+  try {
+    const data = await fetchGeminiJson(buildGeminiModelUrl(EMBEDDING_MODEL, "embedContent"), {
+      method: "POST",
+      body: JSON.stringify({
+        content: {
+          parts: [{ text }],
+        },
+      }),
+    });
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      input: text,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Embedding request failed:", response.status, errorText);
+    return (
+      data?.embedding?.values ||
+      data?.embedding?.[0]?.embedding ||
+      data?.embeddings?.[0]?.embedding ||
+      data?.embedding?.[0]?.values ||
+      []
+    );
+  } catch (error) {
+    console.error("Embedding request failed:", error);
     return [];
   }
-
-  const data = await response.json();
-  return (
-    data?.embedding?.[0]?.embedding ||
-    data?.data?.[0]?.embedding ||
-    data?.embeddings?.[0]?.embedding ||
-    []
-  );
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {

@@ -163,6 +163,14 @@ export async function POST(req: Request) {
       return jsonError(error.message);
     }
 
+    console.debug("ADMIN PRODUCT CREATED:", {
+      id: data?.id,
+      name: data?.name,
+      category: data?.category,
+      tags: data?.tags,
+      concerns: data?.concerns,
+    });
+
     const product = {
       id: String(data.id),
       name: data.name,

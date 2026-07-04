@@ -1,6 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { products as staticProducts } from "@/lib/data/products";
+import { getAllProducts } from "@/lib/products/getAllProducts";
 import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +19,7 @@ import {
   buildKnowledgeSourceReferences,
 } from "@/lib/ai/rag";
 import type { KnowledgeDocument } from "@/lib/ai/knowledge-base";
+import { buildGeminiModelUrl, fetchGeminiJson, getGeminiModelConfig } from "@/lib/ai/gemini";
 
 {/*interface Product {
   id: string;
@@ -46,9 +46,7 @@ import type { KnowledgeDocument } from "@/lib/ai/knowledge-base";
   subcategory?: string;
 }*/}
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent";
+const { chatModel: GEMINI_MODEL } = getGeminiModelConfig();
 
 function normalizeCategory(category: string | undefined | null) {
   if (!category) return "general";
@@ -160,68 +158,60 @@ function productMatchesCategoryOrSubcategory(
   return false;
 }
 
-function selectCandidateProducts(
+function selectEligibleProducts(
   products: Product[],
   selectedCategory?: string,
-  selectedSubcategory?: string,
-  message?: string
+  selectedSubcategory?: string
 ) {
+  if (!selectedCategory && !selectedSubcategory) {
+    return products;
+  }
+
   const normalizedCategory = normalizeCategory(selectedCategory);
   const normalizedSubcategory = normalizeSubcategory(selectedSubcategory);
-  const normalizedMessage = String(message ?? "").toLowerCase();
 
-  const directMatches = products.filter((product) =>
+  const eligibleProducts = products.filter((product) =>
     productMatchesCategoryOrSubcategory(product, normalizedCategory, normalizedSubcategory)
   );
 
-  if (directMatches.length > 0) {
-    return Array.from(new Map(directMatches.map((p) => [p.id, p])).values()).slice(0, 20);
-  }
-
-  const keywordMatches = products.filter((product) => {
-    const text = [product.name, product.description, ...(product.tags ?? []), ...(product.benefits ?? []), ...(product.ingredients ?? [])]
-      .join(" ")
-      .toLowerCase();
-
-    return (
-      normalizedCategory !== "general" && text.includes(normalizedCategory)
-    ) || (normalizedSubcategory && text.includes(normalizedSubcategory)) || (normalizedMessage && text.includes(normalizedMessage));
-  });
-
-  if (keywordMatches.length > 0) {
-    return Array.from(new Map(keywordMatches.map((p) => [p.id, p])).values()).slice(0, 20);
-  }
-
-  return products
-    .filter((product) => product.inStock)
-    .slice(0, 20);
+  return Array.from(new Map(eligibleProducts.map((p) => [p.id, p])).values());
 }
 
 function formatProductForPrompt(product: Product) {
   const parts = [
     `id: ${product.id}`,
     `name: ${product.name}`,
-    `description: ${product.description}`,
     `category: ${product.category || "general"}`,
+    `subCategory: ${product.subcategory || ""}`,
+    `description: ${product.description}`,
+    `concerns: ${product.concerns?.join(", ") || ""}`,
+    `concernKeywords: ${product.concernKeywords?.join(", ") || ""}`,
+    `tags: ${product.tags?.join(", ") || ""}`,
+    `ingredients: ${product.ingredients?.join(", ") || ""}`,
+    `benefits: ${product.benefits?.join(", ") || ""}`,
+    `skin_type: ${product.skin_type?.join(", ") || ""}`,
+    `hair_type: ${product.hair_type?.join(", ") || ""}`,
+    `usage: ${product.usage || ""}`,
+    `priority: ${product.priority ?? 0}`,
+    `searchMetadata: ${product.searchMetadata || ""}`,
   ];
 
-  if (product.subcategory) parts.push(`subCategory: ${product.subcategory}`);
-  if (product.ingredients?.length) parts.push(`ingredients: ${product.ingredients.join(", ")}`);
-  if (product.benefits?.length) parts.push(`benefits: ${product.benefits.join(", ")}`);
-
-  return parts.join(" | ");
+  return parts.filter(Boolean).join(" | ");
 }
 
 function createRecommendationPrompt(
-  selectedCategory: string | undefined,
+  selectedCategory: string |undefined,
   selectedSubcategory: string | undefined,
   products: Product[],
   userMessage: string,
   userKeywords: string[],
   knowledgeContext: string
 ) {
-  const selectedCategoryLabel = selectedCategory ? selectedCategory : "general beauty";
-  const selectedSubcategoryLabel = selectedSubcategory ? selectedSubcategory : "general concern";
+  const selectedCategoryLabel =
+    selectedCategory ?? "general beauty";
+
+  const selectedSubcategoryLabel =
+    selectedSubcategory ?? "general concern";
 
   const productList = products
     .map((p, i) => `${i + 1}. ${formatProductForPrompt(p)}`)
@@ -240,16 +230,74 @@ ${productList}
 Knowledge base context:
 ${knowledgeContext || "No additional context available."}
 
-Important:
-- ONLY recommend products from the list above.
-- Choose products that best match the selected category and subcategory.
-- Prefer exact concern matches, but use semantic relevance if an exact match is unavailable.
-- Include relevant products with empty category/subcategory when the description strongly matches the user concern.
-- Return 3-5 top recommendations using product names only.
-- Do not invent products or details.
-- Keep your response warm, concise, and customer friendly.
+Instructions:
 
-Return a short recommendation paragraph and a numbered recommendation list of the best matching products.`;
+- Recommend ONLY products from the product list above.
+- Choose the products that best match the user's concern.
+- Recommend between 3 and 5 products.
+- Never invent products, ingredients, prices, or benefits.
+- Mention ONLY the PRODUCT NAMES.
+- NEVER mention product IDs.
+- NEVER mention UUIDs.
+- NEVER reveal internal identifiers.
+- Do NOT output values such as "id: 17" or UUID strings.
+- Do NOT mention prices because the product cards already display them.
+- Do NOT mention "Add to Cart" because the UI already provides that button.
+- Write in a warm, friendly, and professional tone.
+- End by inviting the customer to view the product cards shown below.
+
+IMPORTANT:
+Every product includes an internal ID for system use only.
+Never reveal those IDs to the customer.
+
+Return:
+1. A short recommendation paragraph.
+2. A bullet list containing ONLY PRODUCT NAMES.`;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractRecommendedProductIdsFromReply(
+  reply: string,
+  products: Product[]
+): string[] {
+  const normalizedReply = reply.toLowerCase();
+  const idLookup = new Map<string, string>();
+  for (const product of products) {
+    idLookup.set(String(product.id).toLowerCase(), String(product.id));
+  }
+
+  const foundIds = new Set<string>();
+  const idPattern = /(?:id|product id)[:\s]*([a-z0-9-_]+)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = idPattern.exec(reply))) {
+    const candidate = match[1].toLowerCase();
+    if (idLookup.has(candidate)) {
+      foundIds.add(idLookup.get(candidate)!);
+    }
+  }
+
+  for (const [lowerId, originalId] of idLookup.entries()) {
+    const regex = new RegExp(`\\b${escapeRegExp(lowerId)}\\b`, "i");
+    if (regex.test(normalizedReply)) {
+      foundIds.add(originalId);
+    }
+  }
+
+  if (foundIds.size > 0) {
+    return Array.from(foundIds).slice(0, 5);
+  }
+
+  for (const product of products) {
+    const normalizedName = normalizeString(product.name);
+    if (normalizedName && normalizedReply.includes(normalizedName.toLowerCase())) {
+      foundIds.add(product.id);
+    }
+  }
+
+  return Array.from(foundIds).slice(0, 5);
 }
 
 async function generateAIReply(
@@ -261,6 +309,11 @@ async function generateAIReply(
   relevantDocs: KnowledgeDocument[]
 ) {
   try {
+    if (!process.env.GEMINI_API_KEY?.trim()) {
+      console.warn("AI CHAT: GEMINI_API_KEY is not configured.");
+      return { text: null, recommendedProductIds: [] };
+    }
+
     const knowledgeContext = buildKnowledgePromptContext(relevantDocs);
     const prompt = createRecommendationPrompt(
       selectedCategory,
@@ -271,21 +324,47 @@ async function generateAIReply(
       knowledgeContext
     );
 
-    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    const data = await fetchGeminiJson(buildGeminiModelUrl(GEMINI_MODEL, "generateContent"), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
       }),
     });
 
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    console.debug("AI CHAT: gemini raw response", data);
+
+    const rawReply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part: { text?: string }) => part?.text || "")
+        .join("") ||
+      data?.candidates?.[0]?.output ||
+      data?.candidates?.[0]?.content?.[0]?.text ||
+      data?.output?.[0]?.content?.[0]?.text ||
+      data?.output?.[0]?.content?.text ||
+      null;
+
+    const recommendedProductIds = rawReply
+      ? extractRecommendedProductIdsFromReply(rawReply, products)
+      : [];
+
+    console.debug("AI CHAT: gemini recommendation ids", {
+      sentIds: products.map((product) => String(product.id)),
+      returnedIds: recommendedProductIds,
+      rawReply,
+    });
+
+    return {
+      text: rawReply,
+      recommendedProductIds,
+    };
   } catch (err) {
     console.error("Gemini error:", err);
-    return null;
+    return { text: null, recommendedProductIds: [] };
   }
 }
 
@@ -389,70 +468,7 @@ function calculateProductScore(
 }
 
 async function fetchAllProducts(): Promise<Product[]> {
-  try {
-    const supabase = createAdminClient() ?? createClient();
-
-    const { data, error } = await supabase.from("products").select("*");
-    if (error) console.error("Supabase error:", error);
-
-    const dbProducts: Product[] = (data || [])
-      .filter(isProductPublishedRow)
-      .map((p: any) => ({
-        id: String(p.id),
-        name: p.name,
-        price: Number(p.price) || 0,
-        category: normalizeCategory(p.category),
-        description: p.description || "",
-        image: p.image_url || "/placeholder.png",
-        inStock: p.in_stock ?? true,
-        volume: p.volume,
-        tags: p.tags || [],
-        concerns: p.concerns || p.concernKeywords || [],
-        concernKeywords: p.concernKeywords || p.concerns || [],
-        skin_type: p.skin_type || [],
-        hair_type: p.hair_type || [],
-        benefits: p.benefits || [],
-        ingredients: p.ingredients || [],
-        usage: p.usage || "",
-        priority: p.priority || 3,
-        subcategory: p.subcategory || p.sub_category || undefined,
-      }));
-
-    const staticMapped: Product[] = staticProducts.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      category: p.category,
-      description: p.description,
-      image: p.image,
-      inStock: p.inStock,
-      volume: p.volume,
-      tags: p.tags || [],
-      concerns: p.concerns || p.concernKeywords || [],
-      concernKeywords: p.concernKeywords || p.concerns || [],
-      skin_type: p.skin_type || [],
-      hair_type: p.hair_type || [],
-      benefits: p.benefits || [],
-      ingredients: p.ingredients || [],
-       usage: p.usage || "",
-        priority: p.priority || 3,
-        subcategory: p.subcategory || p.sub_category || undefined,
-    }));
-
-    const productMap = new Map<string, Product>();
-
-    for (const product of [...staticMapped, ...dbProducts]) {
-      const key = product.name.toLowerCase().trim();
-      if (!productMap.has(key)) {
-        productMap.set(key, product);
-      }
-    }
-
-    return Array.from(productMap.values());
-  } catch (error) {
-    console.error("Product fetch failed:", error);
-    return staticProducts as Product[];
-  }
+  return getAllProducts();
 }
 
 function selectRecommendedProducts(
@@ -673,22 +689,23 @@ export async function POST(request: NextRequest) {
       : getConcernCategoriesFromText(normalizedMessage);
     const faceConcern = isFaceConcern(normalizedMessage, userKeywords);
     const allProducts = await fetchAllProducts();
-    const candidateProducts = selectCandidateProducts(
+    console.debug("AI CHAT: all products loaded", {
+      totalProducts: allProducts.length,
+      productIds: allProducts.map((product) => product.id),
+    });
+
+    const eligibleProducts = selectEligibleProducts(
       allProducts,
       selectedCategory,
-      selectedSubcategory,
-      normalizedMessage
-    );
-    const { products: filteredProducts, confidenceScore } = filterProducts(
-      candidateProducts,
-      categories,
-      userKeywords,
-      faceConcern,
-      normalizedMessage,
-      selectedCategory
+      selectedSubcategory
     );
 
-    if (filteredProducts.length === 0) {
+    console.debug("AI CHAT: eligible products selected", {
+      eligibleProducts: eligibleProducts.length,
+      eligibleIds: eligibleProducts.map((product) => product.id),
+    });
+
+    if (eligibleProducts.length === 0) {
       const relevantDocs = await getRelevantKnowledgeDocuments(normalizedMessage, 3);
 
       return NextResponse.json({
@@ -705,20 +722,60 @@ export async function POST(request: NextRequest) {
     }
 
     const relevantDocs = await getRelevantKnowledgeDocuments(normalizedMessage, 4);
-    const aiReply = await generateAIReply(
+
+    console.debug("AI CHAT: candidate products sent to Gemini", {
+      candidateCount: eligibleProducts.length,
+      candidateIds: eligibleProducts.map((product) => product.id),
+    });
+
+    const aiResult = await generateAIReply(
       normalizedMessage,
       userKeywords,
-      filteredProducts,
+      eligibleProducts,
       selectedCategory,
       selectedSubcategory,
       relevantDocs
     );
 
+    const recommendedProductsById = aiResult.recommendedProductIds.length
+      ? eligibleProducts.filter((product) =>
+          aiResult.recommendedProductIds.includes(String(product.id))
+        )
+      : [];
+
+    const fallbackResult = filterProducts(
+      eligibleProducts,
+      categories,
+      userKeywords,
+      faceConcern,
+      normalizedMessage,
+      selectedCategory
+    );
+
+    const finalProducts =
+      recommendedProductsById.length > 0
+        ? recommendedProductsById
+        : fallbackResult.products;
+
+    const confidenceScore =
+      recommendedProductsById.length > 0
+        ? Math.min(1, fallbackResult.confidenceScore + 0.15)
+        : fallbackResult.confidenceScore;
+
+    const replyText = aiResult.text
+      ? `${aiResult.text}\n\n👉 Tap “Add to Cart” or contact us on WhatsApp 😊`
+      : "Here are some recommendations based on your selected category and concern.\n\n👉 Tap “Add to Cart” or contact us on WhatsApp 😊";
+
+    console.debug("AI CHAT: final products returned", {
+      finalCount: finalProducts.length,
+      finalIds: finalProducts.map((product) => product.id),
+    });
+
     return NextResponse.json({
-      message: `${aiReply}\n\n👉 Tap “Add to Cart” or contact us on WhatsApp 😊`,
-      products: filteredProducts,
+      message: replyText,
+      products: finalProducts,
       detectedConcerns: getConcernRootsFromKeywords(userKeywords),
-      recommendedProducts: filteredProducts.map((product) => product.name),
+      recommendedProducts: finalProducts.map((product) => product.name),
       matchedKeywords: userKeywords,
       confidenceScore,
       showContactButton: false,

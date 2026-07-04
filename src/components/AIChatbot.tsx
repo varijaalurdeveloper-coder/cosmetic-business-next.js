@@ -277,17 +277,25 @@ export default function AIChatbot() {
 
       const data = await response.json();
 
-      const products = Array.isArray(data?.products) ? data.products : [];
+      const backendProducts = Array.isArray(data?.products)
+        ? (data.products as Product[])
+        : [];
+      console.debug("AI CHAT FRONTEND: backend products", {
+        products: backendProducts.map((product) => ({ id: product.id, name: product.name })),
+        count: backendProducts.length,
+        responseMessage: data?.message,
+      });
+
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
         content: data?.message || "Here are some recommendations 😊",
-        products,
+        products: backendProducts,
       };
 
       setMessages((prev) => [...prev, botMessage]);
-      setCurrentPane(products.length > 0 ? "followUp" : "none");
-      setShowContactButton(Boolean(data?.showContactButton) || products.length === 0);
+      setCurrentPane(backendProducts.length > 0 ? "followUp" : "none");
+      setShowContactButton(Boolean(data?.showContactButton) || backendProducts.length === 0);
     } catch (error) {
       setMessages((prev) => [
         ...prev,

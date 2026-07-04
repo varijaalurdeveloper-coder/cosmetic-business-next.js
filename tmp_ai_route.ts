@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAllProducts, getStaticProducts } from "@/lib/products/getAllProducts";
 
 export const dynamic = "force-dynamic";
