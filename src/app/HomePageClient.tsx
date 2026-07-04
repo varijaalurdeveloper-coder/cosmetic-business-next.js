@@ -12,7 +12,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useCart } from "@/providers/CartProvider";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Leaf, Heart, Star, Shield } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { toast } from "sonner";
 import { Product } from "@/types";
@@ -96,6 +96,44 @@ export default function HomePageClient() {
                   Learn More
                 </Button>
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+                <Leaf className="h-10 w-10 text-green-600" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">100% Organic</h3>
+              <p className="text-gray-600">All natural ingredients</p>
+            </div>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-cyan-100">
+                <Heart className="h-10 w-10 text-cyan-600" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Handmade</h3>
+              <p className="text-gray-600">Crafted with care</p>
+            </div>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-teal-100">
+                <Star className="h-10 w-10 text-teal-600" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Chemical Free</h3>
+              <p className="text-gray-600">No harmful chemicals</p>
+            </div>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-lime-100">
+                <Shield className="h-10 w-10 text-lime-600" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Tested & Safe</h3>
+              <p className="text-gray-600">Quality assured</p>
             </div>
           </div>
         </div>
