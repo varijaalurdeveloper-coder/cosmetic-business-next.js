@@ -9,8 +9,8 @@ import { WhatsAppButton } from "@/components/WhatsAppButton";
 import AIChatbot from "@/components/AIChatbot";
 
 export const metadata: Metadata = {
-  title: "Rima Cosmetics",
-  description: "100% organic handmade cosmetic products crafted with love.",
+  title: "Rima Cosmetics | Everyday beauty, elevated",
+  description: "Discover thoughtfully chosen skincare, haircare, and self-care essentials from Rima Cosmetics.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

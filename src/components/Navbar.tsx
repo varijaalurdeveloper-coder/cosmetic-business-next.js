@@ -41,9 +41,9 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-40 border-b bg-white shadow-sm">
-      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-3">
+    <nav className="sticky top-0 z-40 border-b border-[#eadfd5] bg-[#fffdf9]/95 shadow-[0_4px_20px_rgba(76,42,31,0.04)] backdrop-blur">
+      <div className="mx-auto max-w-7xl px-4 sm:px-8 lg:px-10">
+        <div className="flex h-[4.5rem] items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center space-x-2">
             <img
               src="/assets/RimaCosmeticsLogo.svg"
@@ -61,7 +61,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -115,7 +115,7 @@ export function Navbar() {
             </Link>
 
             {user ? (
-              <div className="hidden md:flex items-center space-x-2">
+              <div className="hidden lg:flex items-center gap-2">
                 <span className="text-gray-700">{user.name}</span>
                 <Button
                   variant="ghost"
@@ -128,7 +128,7 @@ export function Navbar() {
                 </Button>
               </div>
             ) : (
-              <Link href="/login" className="hidden md:block">
+              <Link href="/login" className="hidden lg:block">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -146,7 +146,7 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="md:hidden shrink-0"
+                  className="lg:hidden shrink-0"
                   aria-label="Open menu"
                 >
                   <Menu className="h-6 w-6" />
