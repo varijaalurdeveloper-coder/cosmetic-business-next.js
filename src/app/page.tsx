@@ -10,7 +10,7 @@ import { products } from "@/lib/data/products";
 import type { Product } from "@/types";
 
 const whatsappNumber = "918939996640";
-const featuredProducts = products.filter((product) => product.priority >= 5).slice(0, 6);
+const featuredProducts = products.filter((product) => (product.priority ?? 0) >= 5).slice(0, 6);
 const categoryCards = [
   { label: "Skin care", value: "skin", image: "/assets/FaceSerum.webp", copy: "Daily rituals for a fresh, cared-for feel." },
   { label: "Hair care", value: "hair", image: "/assets/OrganicHairOil.webp", copy: "Nourishing care for your hair routine." },
@@ -60,5 +60,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-export { whatsappUrl };
