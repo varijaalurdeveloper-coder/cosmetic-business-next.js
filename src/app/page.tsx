@@ -10,7 +10,7 @@ import { products } from "@/lib/data/products";
 import type { Product } from "@/types";
 
 const whatsappNumber = "918939996640";
-const featuredProducts = products.filter((product) => (product.priority ?? 0) >= 5).slice(0, 6);
+const featuredProducts = products.filter((product) => product.priority >= 5).slice(0, 6);
 const categoryCards = [
   { label: "Skin care", value: "skin", image: "/assets/FaceSerum.webp", copy: "Daily rituals for a fresh, cared-for feel." },
   { label: "Hair care", value: "hair", image: "/assets/OrganicHairOil.webp", copy: "Nourishing care for your hair routine." },
@@ -30,11 +30,11 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-14 sm:px-8 lg:grid-cols-[1fr_0.9fr] lg:gap-20 lg:py-24">
           <div className="relative z-10">
             <p className="eyebrow">Rima Cosmetics · Natural care</p>
-            <h1 className="mt-5 max-w-2xl text-balance text-5xl text-[#331d1d] sm:text-6xl lg:text-7xl">Your Everyday Ritual, Elevated.</h1>
-            <p className="mt-7 max-w-xl text-lg leading-8 text-[#684f4b]">Discover thoughtfully chosen beauty essentials for your daily skincare, haircare, and self-care rituals.</p>
+            <h1 className="mt-5 max-w-2xl text-balance text-5xl text-[#331d1d] sm:text-6xl lg:text-7xl">Beauty rituals that feel like you.</h1>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-[#684f4b]">Discover considered skincare, haircare and everyday essentials made to bring a little more care to your routine.</p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="rounded-full bg-[#6f2828] px-6 text-white hover:bg-[#542020]"><Link href="/products">Explore Our Collection <ArrowRight data-icon="inline-end" /></Link></Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full border-[#6f2828]/30 bg-transparent px-6 text-[#6f2828] hover:bg-white"><a href={whatsappUrl()} target="_blank" rel="noreferrer"><MessageCircle data-icon="inline-start" />Chat With Us</a></Button>
+              <Button asChild size="lg" className="rounded-full bg-[#6f2828] px-6 text-white hover:bg-[#542020]"><Link href="/products">Explore products <ArrowRight data-icon="inline-end" /></Link></Button>
+              <Button asChild size="lg" variant="outline" className="rounded-full border-[#6f2828]/30 bg-transparent px-6 text-[#6f2828] hover:bg-white"><a href={whatsappUrl()} target="_blank" rel="noreferrer"><MessageCircle data-icon="inline-start" />Enquire on WhatsApp</a></Button>
             </div>
             <div className="mt-12 flex flex-wrap gap-x-8 gap-y-3 text-sm text-[#684f4b]"><span className="flex items-center gap-2"><Check className="size-4 text-[#6f2828]" />Personal product guidance</span><span className="flex items-center gap-2"><Check className="size-4 text-[#6f2828]" />Easy WhatsApp enquiries</span></div>
           </div>
@@ -60,3 +60,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+export { whatsappUrl };
