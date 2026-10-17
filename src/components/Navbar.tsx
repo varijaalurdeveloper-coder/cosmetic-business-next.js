@@ -48,7 +48,7 @@ export function Navbar() {
             <img
               src="/assets/RimaCosmeticsLogo.svg"
               alt="Rima Cosmetics Logo"
-              className="h-10 w-10 shrink-0"
+              className="!size-10 max-w-none shrink-0 object-contain"
             />
             <div className="min-w-0 flex flex-col">
               <span className="truncate text-sm font-semibold text-gray-900 sm:text-base">
