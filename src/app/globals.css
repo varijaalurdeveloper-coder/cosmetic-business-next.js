@@ -11,15 +11,15 @@
   --font-size: 16px;
   --radius: 0.625rem;
 
-  --background: #ffffff;
-  --foreground: #111827;
+  --background: #fbf8f4;
+  --foreground: #352522;
 
-  --primary: #05a126;
-  --secondary: #f3f4f6;
-  --muted: #ececf0;
-  --accent: #e9ebef;
+  --primary: #6b302c;
+  --secondary: #f1e5db;
+  --muted: #eee5de;
+  --accent: #dfc7b5;
 
-  --border: #e5e7eb;
+  --border: #eadfd6;
 }
 
 /* =========================
@@ -107,6 +107,14 @@
 ========================= */
 
 @layer utilities {
+  .announcement-bar {
+    @apply bg-[#352522] px-4 py-2 text-center text-[10px] uppercase tracking-[0.18em] text-[#ead5c8] sm:text-xs;
+  }
+
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8e6556] sm:text-xs;
+  }
+
   .text-balance {
     text-wrap: balance;
   }
