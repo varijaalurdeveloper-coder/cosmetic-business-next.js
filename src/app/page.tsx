@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { products } from "@/lib/data/products";
-import { Chatbot } from "@/components/Chatbot";
 import type { Product } from "@/types";
 
 const whatsappNumber = "918939996640";
@@ -55,8 +54,6 @@ export default function HomePage() {
       <section className="bg-[#151b2a] py-20 text-white"><div className="mx-auto max-w-3xl px-5 sm:px-8"><p className="eyebrow text-center text-[#e8fef4]">Good to know</p><h2 className="mt-3 text-center text-4xl text-white">Questions, answered.</h2><Accordion type="single" collapsible className="mt-8">{[{q:"How do I choose a product?",a:"Send us a WhatsApp message with your skin or hair concern and we can help you explore the available products."},{q:"How can I check availability?",a:"Product availability can change. Please enquire about the product you are interested in for the latest information."},{q:"How do I place an enquiry?",a:"Use the enquiry link on any product card, or visit Contact to send a detailed message."}].map((item) => <AccordionItem key={item.q} value={item.q} className="border-white/15"><AccordionTrigger className="text-left text-base text-white hover:no-underline">{item.q}</AccordionTrigger><AccordionContent className="leading-7 text-white/65">{item.a}</AccordionContent></AccordionItem>)}</Accordion></div></section>
 
       <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8"><div className="relative overflow-hidden rounded-[2rem] bg-[#e8fef4] px-6 py-14 text-center sm:px-12"><div className="relative z-10"><p className="eyebrow">Your next ritual starts here</p><h2 className="mx-auto mt-3 max-w-2xl text-4xl tracking-[-0.03em] text-[#151b2a] sm:text-5xl">Ready to make beauty more personal?</h2><p className="mx-auto mt-4 max-w-xl text-[#3e4f56]">Explore the collection, or talk to us about the right place to begin.</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Button asChild className="rounded-full bg-[#00a63d] text-white hover:bg-[#008d34]"><Link href="/products">Explore the collection</Link></Button><Button asChild variant="outline" className="rounded-full border-[#00a63d]/30 bg-transparent text-[#00a63d]"><a href={whatsappUrl()} target="_blank" rel="noreferrer">Talk to a formulator <MessageCircle data-icon="inline-end" /></a></Button></div></div></div></section>
-      <a href={whatsappUrl()} target="_blank" rel="noreferrer" aria-label="Chat with Rima Cosmetics on WhatsApp" className="fixed bottom-5 right-5 z-30 flex size-14 items-center justify-center rounded-full bg-[#00a63d] text-white shadow-xl shadow-[#151b2a]/20 transition hover:-translate-y-1 hover:bg-[#3f5947]"><MessageCircle className="size-6" /></a>
-      <Chatbot />
     </main>
   );
 }
