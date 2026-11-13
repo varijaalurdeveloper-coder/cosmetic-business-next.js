@@ -135,7 +135,7 @@
 
 @layer components {
   .blog-shell {
-    @apply min-h-screen bg-[#eaf6ef];
+    @apply min-h-screen bg-[#e8fef4];
   }
 
   .blog-card {
