@@ -11,15 +11,15 @@
   --font-size: 16px;
   --radius: 0.625rem;
 
-  --background: #fbf8f4;
-  --foreground: #352522;
+  --background: #ffffff;
+  --foreground: #151b2a;
 
-  --primary: #6b302c;
-  --secondary: #f1e5db;
-  --muted: #eee5de;
-  --accent: #dfc7b5;
+  --primary: #00a63d;
+  --secondary: #151b2a;
+  --muted: #f3f5f4;
+  --accent: #ffffff;
 
-  --border: #eadfd6;
+  --border: #e3e8e5;
 }
 
 /* =========================
@@ -108,11 +108,11 @@
 
 @layer utilities {
   .announcement-bar {
-    @apply bg-[#352522] px-4 py-2 text-center text-[10px] uppercase tracking-[0.18em] text-[#ead5c8] sm:text-xs;
+    @apply bg-[#151b2a] px-4 py-2 text-center text-[10px] uppercase tracking-[0.18em] text-white sm:text-xs;
   }
 
   .eyebrow {
-    @apply text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8e6556] sm:text-xs;
+    @apply text-[10px] font-semibold uppercase tracking-[0.22em] text-[#008d34] sm:text-xs;
   }
 
   .text-balance {
