@@ -12,14 +12,14 @@
   --radius: 0.625rem;
 
   --background: #ffffff;
-  --foreground: #111827;
+  --foreground: #151b2a;
 
-  --primary: #05a126;
-  --secondary: #f3f4f6;
-  --muted: #ececf0;
-  --accent: #e9ebef;
+  --primary: #00a63d;
+  --secondary: #151b2a;
+  --muted: #f3f5f4;
+  --accent: #ffffff;
 
-  --border: #e5e7eb;
+  --border: #e3e8e5;
 }
 
 /* =========================
@@ -107,6 +107,14 @@
 ========================= */
 
 @layer utilities {
+  .announcement-bar {
+    @apply bg-[#151b2a] px-4 py-2 text-center text-[10px] uppercase tracking-[0.18em] text-white sm:text-xs;
+  }
+
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.22em] text-[#008d34] sm:text-xs;
+  }
+
   .text-balance {
     text-wrap: balance;
   }
@@ -127,7 +135,7 @@
 
 @layer components {
   .blog-shell {
-    @apply min-h-screen bg-[#eaf6ef];
+    @apply min-h-screen bg-[#e8fef4];
   }
 
   .blog-card {

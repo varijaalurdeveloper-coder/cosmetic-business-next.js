@@ -40,7 +40,7 @@ export default function BlogDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#eaf6ef] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#e8fef4] px-4">
         <p className="text-gray-600">Loading blog post...</p>
       </div>
     );
@@ -48,7 +48,7 @@ export default function BlogDetailPage() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-[#eaf6ef] px-4 py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#e8fef4] px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl rounded-3xl bg-white p-10 shadow-[0_8px_24px_rgba(16,24,40,0.08)] text-center">
           <p className="text-xl font-semibold text-gray-900">Blog post not found.</p>
           <p className="mt-3 text-gray-500">
@@ -63,7 +63,7 @@ export default function BlogDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eaf6ef]">
+    <div className="min-h-screen bg-[#e8fef4]">
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-6">

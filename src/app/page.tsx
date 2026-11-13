@@ -1,179 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "../components/ui/carousel";
-import { useCart } from "../providers/CartProvider";
-import { ShoppingCart } from "lucide-react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { toast } from "sonner";
-import { Product } from "@/types";
+import { ArrowRight, Check, ChevronRight, FlaskConical, Leaf, MessageCircle, ShieldCheck, Sparkles, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { products } from "@/lib/data/products";
+import type { Product } from "@/types";
+
+const whatsappNumber = "918939996640";
+const featuredProducts = products.filter((product) => (product.priority ?? 0) >= 5).slice(0, 6);
+const categoryCards = [
+  { label: "Skin care", value: "skin", image: "/assets/FaceSerum.webp", copy: "Thoughtful formulas for your daily ritual." },
+  { label: "Hair care", value: "hair", image: "/assets/OrganicHairOil.webp", copy: "Nourishing essentials for healthy-looking hair." },
+  { label: "Lip care", value: "lips", image: "/assets/LipBalm.webp", copy: "Everyday comfort, beautifully made." },
+];
+
+function whatsappUrl(product?: Product) {
+  const message = product ? `Hello! I would like to enquire about ${product.name}.` : "Hello! I would like to talk to a Rima Cosmetics formulator.";
+  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
 
 export default function HomePage() {
-  const { addToCart } = useCart();
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // ✅ FETCH PRODUCTS (static + admin via API)
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        console.log("📡 Fetching homepage products...");
-
-        const res = await fetch("/api/products", { cache: "no-store" });
-        const data = await res.json();
-
-        console.log("✅ Homepage products:", data);
-
-        setProducts(data.products || []);
-      } catch (err) {
-        console.error("❌ Fetch error:", err);
-        toast.error("Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  const handleAddToCart = (product: Product) => {
-    addToCart(product);
-    toast.success(`${product.name} added to cart!`);
-  };
-
-  // ✅ OPTIONAL: show only first 8 products on homepage
-  const displayProducts = products;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading products...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen">
-      {/* Hero Section (unchanged) */}
-      <section className="relative h-[600px] bg-gradient-to-r from-green-50 to-emerald-50">
-        <div className="absolute inset-0">
-          <ImageWithFallback
-            src="https://images.unsplash.com/photo-1722934797829-5c60280d05af?crop=entropy&cs=tinysrgb&fit=max&fm=webp&q=85&w=1920"
-            alt="Organic Cosmetics"
-            className="w-full h-full object-cover"
-            width={1920}
-            height={1200}
-          />
-          <div className="absolute inset-0 bg-black/40"></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="max-w-2xl">
-            <h1 className="mb-6 text-white drop-shadow-lg">
-              100% Organic Handmade Cosmetics
-            </h1>
-            <p className="mb-8 text-white drop-shadow-md text-lg">
-              Discover the power of nature with our carefully crafted organic
-              beauty products.
-            </p>
-
-            <div className="flex space-x-4">
-              <Link href="/products">
-                <Button size="lg" className="bg-green-600 hover:bg-green-700">
-                  Shop Now
-                </Button>
-              </Link>
-
-              <Link href="/about">
-                <Button size="lg" variant="outline">
-                  Learn More
-                </Button>
-              </Link>
-            </div>
+    <main className="overflow-hidden bg-[#ffffff] text-[#151b2a]">
+      <div className="announcement-bar">Rima Cosmetics · Thoughtful beauty essentials from Chennai, Tamil Nadu</div>
+      <section className="relative bg-[#f3f5f4]">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:px-8 lg:min-h-[640px] lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-16">
+          <div className="relative z-10 max-w-xl">
+            <p className="eyebrow">Rima Cosmetics · Formulated with intention</p>
+            <h1 className="mt-5 text-balance text-5xl font-medium leading-[1.04] tracking-[-0.04em] text-[#151b2a] sm:text-6xl lg:text-[5.6rem]">Your Everyday Ritual, Elevated.</h1>
+            <p className="mt-7 max-w-lg text-lg leading-8 text-[#4f596b]">Discover thoughtfully chosen beauty essentials for your daily skincare, haircare, and self-care rituals.</p>
+            <div className="mt-9 flex flex-wrap gap-3"><Button asChild size="lg" className="rounded-full bg-[#00a63d] px-6 text-white shadow-lg shadow-[#00a63d]/15 hover:bg-[#008d34]"><Link href="/products">Explore Our Collection <ArrowRight data-icon="inline-end" /></Link></Button><Button asChild size="lg" variant="outline" className="rounded-full border-[#00a63d]/30 bg-[#ffffff]/50 px-6 text-[#00a63d] hover:bg-white"><a href={whatsappUrl()} target="_blank" rel="noreferrer"><MessageCircle data-icon="inline-start" />Chat With Us</a></Button></div>
+            <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-[#4f596b]"><span className="flex items-center gap-2"><Check className="size-4 text-[#00a63d]" />Personal product guidance</span><span className="flex items-center gap-2"><Check className="size-4 text-[#00a63d]" />Easy WhatsApp enquiries</span></div>
+          </div>
+          <div className="relative mx-auto w-full max-w-[640px]">
+            <div className="absolute -inset-8 rounded-[45%] bg-[#e8fef4]/60 blur-3xl" /><div className="relative overflow-hidden rounded-[45%_45%_12%_12%] bg-[#f3f5f4] p-4 shadow-[0_35px_90px_rgba(93,47,32,0.18)]"><ImageWithFallback src="/assets/FaceSerum.webp" alt="Rima Cosmetics face serum" width={800} height={800} priority className="aspect-square w-full object-contain transition duration-700 hover:scale-105" /></div><div className="absolute bottom-5 -left-2 rounded-2xl bg-[#ffffff] px-4 py-3 shadow-xl sm:-left-8"><p className="text-[10px] uppercase tracking-[0.22em] text-[#3e4f56]">Made for your</p><p className="mt-1 font-serif text-lg">everyday ritual.</p></div>
           </div>
         </div>
       </section>
 
-      {/* Products Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="mb-4">Our Products</h2>
-            <p className="text-gray-600">
-              Explore our range of organic cosmetic products
-            </p>
-          </div>
+      <section className="border-b border-[#e8fef4] bg-[#ffffff] py-20 sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="eyebrow">The Rima edit</p><h2 className="mt-3 text-4xl tracking-[-0.03em] sm:text-5xl">Your beauty essentials.</h2><p className="mt-4 max-w-md text-[#566071]">Considered products for the moments that make up your day.</p></div><Link href="/products" className="group text-sm font-semibold text-[#00a63d]">View all products <ArrowRight className="ml-1 inline size-4 transition-transform group-hover:translate-x-1" /></Link></div><div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{featuredProducts.map((product) => <Card key={product.id} className="group overflow-hidden rounded-[1.6rem] border border-[#e8fef4] bg-white shadow-none transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#7a4a32]/10"><CardContent className="p-0"><Link href={`/products/${product.id}`} className="block"><div className="aspect-[1.05] overflow-hidden bg-[#f3f5f4]"><ImageWithFallback src={product.image} alt={product.name} width={500} height={500} className="h-full w-full object-contain transition duration-500 group-hover:scale-105" /></div><div className="p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-lg font-semibold">{product.name}</p><p className="mt-1 line-clamp-2 text-sm leading-6 text-[#566071]">{product.description}</p></div><span className="shrink-0 text-sm font-semibold text-[#00a63d]">₹{product.price}</span></div></div></Link><div className="px-5 pb-5"><a href={whatsappUrl(product)} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#00a63d] hover:underline">Enquire about this product <ArrowRight className="ml-1 inline size-4" /></a></div></CardContent></Card>)}</div></div></section>
 
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent>
-              {displayProducts.map((product) => (
-                <CarouselItem
-                  key={product.id}
-                  className="md:basis-1/2 lg:basis-1/4"
-                >
-                  <Card className="h-full hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="aspect-square mb-4 overflow-hidden rounded-lg bg-gray-100">
-                        <ImageWithFallback
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-contain hover:scale-105 transition-transform"
-                          width={400}
-                          height={400}
-                        />
-                      </div>
+      <section className="bg-[#151b2a] py-20 text-[#ffffff] sm:py-24"><div className="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-[0.85fr_1.15fr]"><div><p className="eyebrow text-[#e8fef4]">Discover the ritual</p><h2 className="mt-3 text-4xl tracking-[-0.03em] text-white sm:text-5xl">Care, by category.</h2><p className="mt-5 max-w-md leading-7 text-white/70">Find the part of your routine you want to make a little more considered.</p><Link href="/products" className="mt-8 inline-flex items-center text-sm font-semibold text-[#e8fef4]">Explore all categories <ChevronRight className="ml-1 size-4" /></Link></div><div className="grid gap-4 sm:grid-cols-3">{categoryCards.map((category) => <Link key={category.value} href={`/products?category=${category.value}`} className="group relative overflow-hidden rounded-[1.5rem] bg-[#e8fef4] p-4"><ImageWithFallback src={category.image} alt={category.label} width={500} height={500} className="absolute inset-0 h-full w-full object-contain opacity-80 transition duration-500 group-hover:scale-110" /><div className="relative flex min-h-64 items-end"><div className="w-full rounded-xl bg-[#ffffff]/90 p-4 text-[#151b2a] backdrop-blur-sm"><h3 className="text-xl">{category.label}</h3><p className="mt-1 text-sm leading-5 text-[#566071]">{category.copy}</p></div></div></Link>)}</div></div></section>
 
-                      <h3 className="mb-2">{product.name}</h3>
+      <section className="bg-[#ffffff] py-20 sm:py-24"><div className="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-20"><div className="relative"><div className="absolute -left-5 -top-5 size-24 rounded-full border border-[#e8fef4]" /><ImageWithFallback src="/assets/OrganicHairOil.webp" alt="Rima Cosmetics hair oil product" width={700} height={700} className="relative aspect-square w-full rounded-[2rem] bg-[#e8fef4] object-contain" /></div><div><p className="eyebrow">The Rima approach</p><h2 className="mt-3 text-4xl tracking-[-0.03em] sm:text-5xl">Beauty that belongs in real life.</h2><p className="mt-6 leading-8 text-[#566071]">Rima Cosmetics brings together everyday beauty essentials chosen to make personal care feel simple, thoughtful, and genuinely enjoyable.</p><div className="mt-8 grid gap-5 sm:grid-cols-2"><div><Leaf className="size-6 text-[#00a63d]" /><h3 className="mt-4 text-lg">A considered edit</h3><p className="mt-2 text-sm leading-6 text-[#566071]">Explore a growing range across skin, hair and lip care.</p></div><div><MessageCircle className="size-6 text-[#00a63d]" /><h3 className="mt-4 text-lg">Human guidance</h3><p className="mt-2 text-sm leading-6 text-[#566071]">Ask us directly when you want help choosing.</p></div></div><Button asChild variant="outline" className="mt-9 rounded-full border-[#00a63d]/30 text-[#00a63d] hover:bg-[#f3f5f4]"><Link href="/about">Discover our story <ArrowRight data-icon="inline-end" /></Link></Button></div></div></section>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-green-600">
-                          ₹{product.price}
-                        </span>
+      <section className="border-y border-[#e8fef4] bg-[#f3f5f4] py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8"><div className="max-w-xl"><p className="eyebrow">Why choose Rima</p><h2 className="mt-3 text-4xl tracking-[-0.03em]">A calmer way to shop beauty.</h2></div><div className="mt-10 grid gap-4 md:grid-cols-3"><div className="rounded-2xl border border-[#e8fef4] bg-[#ffffff]/70 p-7"><Sparkles className="size-6 text-[#00a63d]" /><h3 className="mt-7 text-xl">Thoughtful essentials</h3><p className="mt-2 leading-7 text-[#566071]">An edit built around the everyday rituals you already love.</p></div><div className="rounded-2xl border border-[#e8fef4] bg-[#ffffff]/70 p-7"><ShieldCheck className="size-6 text-[#00a63d]" /><h3 className="mt-7 text-xl">Personal guidance</h3><p className="mt-2 leading-7 text-[#566071]">Ask questions and get help directly from our team.</p></div><div className="rounded-2xl border border-[#e8fef4] bg-[#ffffff]/70 p-7"><FlaskConical className="size-6 text-[#00a63d]" /><h3 className="mt-7 text-xl">Made for routines</h3><p className="mt-2 leading-7 text-[#566071]">Simple, approachable products for skin, hair and self-care.</p></div></div></div></section>
 
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddToCart(product)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
+      <section className="bg-[#ffffff] py-20"><div className="mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-[1fr_0.8fr]"><div><p className="eyebrow">Beauty notes</p><h2 className="mt-3 text-4xl tracking-[-0.03em] sm:text-5xl">Small rituals, lasting comfort.</h2><p className="mt-5 max-w-lg leading-8 text-[#566071]">A good routine does not need to be complicated. Start with what feels useful, stay consistent, and choose products that make caring for yourself feel natural.</p><Link href="/blogs" className="mt-7 inline-flex items-center text-sm font-semibold text-[#00a63d]">Read our beauty journal <ArrowRight className="ml-1 size-4" /></Link></div><ImageWithFallback src="/assets/LipBalm.webp" alt="Rima Cosmetics lip care" width={600} height={500} className="aspect-[1.2] w-full rounded-[2rem] bg-[#e8fef4] object-contain" /></div></section>
 
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
+      <section className="bg-[#151b2a] py-20 text-white"><div className="mx-auto max-w-3xl px-5 sm:px-8"><p className="eyebrow text-center text-[#e8fef4]">Good to know</p><h2 className="mt-3 text-center text-4xl text-white">Questions, answered.</h2><Accordion type="single" collapsible className="mt-8">{[{q:"How do I choose a product?",a:"Send us a WhatsApp message with your skin or hair concern and we can help you explore the available products."},{q:"How can I check availability?",a:"Product availability can change. Please enquire about the product you are interested in for the latest information."},{q:"How do I place an enquiry?",a:"Use the enquiry link on any product card, or visit Contact to send a detailed message."}].map((item) => <AccordionItem key={item.q} value={item.q} className="border-white/15"><AccordionTrigger className="text-left text-base text-white hover:no-underline">{item.q}</AccordionTrigger><AccordionContent className="leading-7 text-white/65">{item.a}</AccordionContent></AccordionItem>)}</Accordion></div></section>
 
-          <div className="text-center mt-8">
-            <Link href="/products">
-              <Button size="lg" variant="outline">
-                View All Products
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
+      <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8"><div className="relative overflow-hidden rounded-[2rem] bg-[#e8fef4] px-6 py-14 text-center sm:px-12"><div className="relative z-10"><p className="eyebrow">Your next ritual starts here</p><h2 className="mx-auto mt-3 max-w-2xl text-4xl tracking-[-0.03em] text-[#151b2a] sm:text-5xl">Ready to make beauty more personal?</h2><p className="mx-auto mt-4 max-w-xl text-[#3e4f56]">Explore the collection, or talk to us about the right place to begin.</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Button asChild className="rounded-full bg-[#00a63d] text-white hover:bg-[#008d34]"><Link href="/products">Explore the collection</Link></Button><Button asChild variant="outline" className="rounded-full border-[#00a63d]/30 bg-transparent text-[#00a63d]"><a href={whatsappUrl()} target="_blank" rel="noreferrer">Talk to a formulator <MessageCircle data-icon="inline-end" /></a></Button></div></div></div></section>
+    </main>
   );
 }
+

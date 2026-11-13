@@ -54,7 +54,7 @@ export default function BlogPage() {
   }, [activeCategory, searchQuery, posts]);
 
   return (
-    <div className="min-h-screen bg-[#eaf6ef]">
+    <div className="min-h-screen bg-[#e8fef4]">
       {/* Hero Section */}
       <section className="bg-[#05a126] text-white">
         <div className="mx-auto flex min-h-[360px] max-w-7xl items-center justify-center px-5 py-14 text-center sm:px-6 lg:px-8">
